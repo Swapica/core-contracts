@@ -1,11 +1,11 @@
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 contract Swapica {
-    using ECDSAUpgradeable for bytes32;
-    using ECDSAUpgradeable for bytes;
+    using ECDSA for bytes32;
+    using ECDSA for bytes;
     event OrderCreated(uint indexed id);
 
     struct Order {
@@ -156,16 +156,11 @@ contract Swapica {
 
     function lock(address coin, address account, uint amount) internal {
         locked[account][coin] += amount;
-        SafeERC20Upgradeable.safeTransferFrom(
-            IERC20Upgradeable(coin),
-            account,
-            address(this),
-            amount
-        );
+        SafeERC20.safeTransferFrom(IERC20(coin), account, address(this), amount);
     }
 
     function release(address coin, address account, address to, uint amount) internal {
         locked[account][coin] -= amount;
-        SafeERC20Upgradeable.safeTransfer(IERC20Upgradeable(coin), to, amount);
+        SafeERC20.safeTransfer(IERC20(coin), to, amount);
     }
 }
