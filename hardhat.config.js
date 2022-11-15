@@ -1,6 +1,7 @@
 require("@nomiclabs/hardhat-web3");
 require("@nomiclabs/hardhat-truffle5");
 require("@nomiclabs/hardhat-etherscan");
+require("@nomicfoundation/hardhat-chai-matchers");
 require("@typechain/hardhat");
 require("hardhat-contract-sizer");
 require("hardhat-gas-reporter");
