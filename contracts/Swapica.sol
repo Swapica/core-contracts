@@ -89,6 +89,7 @@ contract Swapica is UUPSUpgradeable, OwnableUpgradeable {
     function cancelOrder(uint id) external {
         Order storage order = orders[id];
         require(orderStatus[id] == Status.AWAITING_MATCH, "Order's status is wrong");
+        require(order.account == msg.sender);
         orderStatus[id] = Status.CANCALLED;
         release(order.tokenToSell, order.account, order.account, order.amountToSell);
     }
