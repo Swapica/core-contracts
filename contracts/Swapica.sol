@@ -1,11 +1,14 @@
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
-contract Swapica {
+contract Swapica is UUPSUpgradeable, OwnableUpgradeable {
     using ECDSA for bytes32;
     using ECDSA for bytes;
+
     event OrderCreated(uint indexed id);
 
     struct Order {
@@ -15,7 +18,7 @@ contract Swapica {
         address tokenToBuy; // destination chain
         uint256 amountToSell;
         uint256 amountToBuy;
-        string destChain;
+        uint destChain;
     }
 
     struct Match {
@@ -24,7 +27,7 @@ contract Swapica {
         address account;
         address tokenToSell; // destination chain
         uint256 amountToSell; // destination chain
-        string originChain;
+        uint originChain;
     }
 
     enum Status {
@@ -43,19 +46,29 @@ contract Swapica {
     mapping(address => mapping(address => uint)) public locked;
 
     modifier checkSignature(bytes memory orderData, bytes memory signature) {
-        address signer = orderData.toEthSignedMessageHash().recover(signature);
-        require(signer == validator, "Signer must be ...");
+        _checkSignature(orderData, signature);
         _;
     }
+
+    function __Swapica_init() external initializer {
+        __Ownable_init();
+        validator = msg.sender;
+    }
+
+    function setValidator(address _v) external onlyOwner {
+        validator = _v;
+    }
+
+    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     /// ORDER part
 
     function createOrder(
-        string memory destChain,
         address tokenToSell,
         uint amountToSell,
         address tokenToBuy,
-        uint amountToBuy
+        uint amountToBuy,
+        uint destChain
     ) external {
         emit OrderCreated(orders.length);
         lock(tokenToSell, msg.sender, amountToSell);
@@ -88,8 +101,8 @@ contract Swapica {
             orderData,
             (bytes4, uint, uint, address)
         );
-        require(selector == this.executeOrder.selector);
-        require(block.chainid == chainid);
+        require(selector == this.executeOrder.selector, "Wrong Selector");
+        _checkChainid(chainid);
         require(orderStatus[id] == Status.AWAITING_MATCH);
 
         Order storage order = orders[id];
@@ -109,10 +122,10 @@ contract Swapica {
             uint orderId,
             address tokenToSell,
             uint amountToSell,
-            string memory originChain
-        ) = abi.decode(orderData, (bytes4, uint, uint, address, uint, string));
-        require(selector == this.createMatch.selector);
-        require(block.chainid == chainid);
+            uint originChain
+        ) = abi.decode(orderData, (bytes4, uint, uint, address, uint, uint));
+        require(selector == this.createMatch.selector, "Wrong Selector");
+        _checkChainid(chainid);
 
         matchStatus[matches.length] = Status.AWAITING_FINALIZATION;
         matches.push(
@@ -126,8 +139,8 @@ contract Swapica {
         bytes memory signature
     ) external checkSignature(orderData, signature) {
         (bytes4 selector, uint chainid, uint id) = abi.decode(orderData, (bytes4, uint, uint));
-        require(selector == this.cancelMatch.selector);
-        require(block.chainid == chainid);
+        require(selector == this.cancelMatch.selector, "Wrong Selector");
+        _checkChainid(chainid);
         require(matchStatus[id] == Status.AWAITING_FINALIZATION, "Order's status is wrong");
 
         Match storage order = matches[id];
@@ -143,8 +156,8 @@ contract Swapica {
             orderData,
             (bytes4, uint, uint, address)
         );
-        require(selector == this.finializeMatch.selector);
-        require(block.chainid == chainid);
+        require(selector == this.finializeMatch.selector, "Wrong Selector");
+        _checkChainid(chainid);
         require(matchStatus[id] == Status.AWAITING_FINALIZATION, "Order's status is wrong");
 
         Match storage order = matches[id];
@@ -162,5 +175,14 @@ contract Swapica {
     function release(address coin, address account, address to, uint amount) internal {
         locked[account][coin] -= amount;
         SafeERC20.safeTransfer(IERC20(coin), to, amount);
+    }
+
+    function _checkSignature(bytes memory orderData, bytes memory signature) internal {
+        address signer = orderData.toEthSignedMessageHash().recover(signature);
+        require(signer == validator, "Signer must be ...");
+    }
+
+    function _checkChainid(uint256 chainid) internal {
+        require(block.chainid == chainid, "ChainId Error");
     }
 }
