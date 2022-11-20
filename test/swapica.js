@@ -16,16 +16,16 @@ describe("CrossBook", function () {
   const AMOUNT2 = 12;
   const NETWORK = 1;
 
-  const createMatchSelector = "0xd4637919";
-  const executeOrderSelector = "0xde14ee46";
-  const finializeMatchSelector = "0xeb234393";
+  const createMatchSelector = "0xf7662788";
+  const executeOrderSelector = "0x14d41b45";
+  const finializeMatchSelector = "0x7bf99e87";
 
   before("Deployment", async function () {
     accounts = await web3.eth.getAccounts();
     orderBook = await Book.new();
-    await orderBook.__Swapica_init();
+    await orderBook.__Swapica_init([accounts[0]]);
     matchBook = await Book.new();
-    await matchBook.__Swapica_init();
+    await matchBook.__Swapica_init([accounts[0]]);
 
     realToken = await Token.new("RealToken", "RTKN", 27);
     testToken = await Token.new("TestToken", "TTKN", 27);
@@ -72,13 +72,13 @@ describe("CrossBook", function () {
       ["bytes4", "uint", "uint", "address", "uint", "uint"],
       [createMatchSelector, 31337, 0, testToken.address, AMOUNT2, NETWORK]
     );
-    await matchBook.createMatch(matchData, await web3.eth.sign(matchData, accounts[0]), { from: accounts[2] });
+    await matchBook.createMatch(matchData, [await web3.eth.sign(matchData, accounts[0])], { from: accounts[2] });
 
     const executeData = web3.eth.abi.encodeParameters(
       ["bytes4", "uint", "uint", "address"],
       [executeOrderSelector, 31337, 0, (await matchBook.matches(0)).account]
     );
-    await orderBook.executeOrder(executeData, await web3.eth.sign(executeData, accounts[0]));
+    await orderBook.executeOrder(executeData, [await web3.eth.sign(executeData, accounts[0])]);
     expect(await realToken.balanceOf(accounts[1])).to.equal(TOTAL - AMOUNT);
     expect(await realToken.balanceOf(accounts[2])).to.equal(AMOUNT);
     expect(await testToken.balanceOf(accounts[1])).to.equal(0);
@@ -88,7 +88,7 @@ describe("CrossBook", function () {
       ["bytes4", "uint", "uint", "address"],
       [finializeMatchSelector, 31337, 0, (await orderBook.orders(0)).account]
     );
-    await matchBook.finializeMatch(finilizeData, await web3.eth.sign(finilizeData, accounts[0]));
+    await matchBook.finializeMatch(finilizeData, [await web3.eth.sign(finilizeData, accounts[0])]);
 
     expect(await realToken.balanceOf(accounts[1])).to.equal(TOTAL - AMOUNT);
     expect(await testToken.balanceOf(accounts[1])).to.equal(AMOUNT2);

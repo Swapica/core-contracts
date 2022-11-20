@@ -1,14 +1,10 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "./Signers.sol";
 
-contract Swapica is UUPSUpgradeable, OwnableUpgradeable {
-    using ECDSA for bytes32;
-    using ECDSA for bytes;
-
+contract Swapica is UUPSUpgradeable, Signers {
     event OrderUpdated(uint indexed id, Status indexed status);
     event MatchUpdated(uint indexed id, Status indexed status);
 
@@ -46,18 +42,13 @@ contract Swapica is UUPSUpgradeable, OwnableUpgradeable {
     mapping(uint => Status) public matchStatus;
     mapping(address => mapping(address => uint)) public locked;
 
-    modifier checkSignature(bytes memory orderData, bytes memory signature) {
-        _checkSignature(orderData, signature);
+    modifier checkSignature(bytes calldata orderData, bytes[] calldata signatures) {
+        _checkSignatures(orderData, signatures);
         _;
     }
 
-    function __Swapica_init() external initializer {
-        __Ownable_init();
-        validator = msg.sender;
-    }
-
-    function setValidator(address _v) external onlyOwner {
-        validator = _v;
+    function __Swapica_init(address[] calldata signers) external initializer {
+        __Signers_init(signers, signers.length);
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
@@ -90,9 +81,9 @@ contract Swapica is UUPSUpgradeable, OwnableUpgradeable {
     }
 
     function executeOrder(
-        bytes memory orderData,
-        bytes memory signature
-    ) external checkSignature(orderData, signature) {
+        bytes calldata orderData,
+        bytes[] calldata signatures
+    ) external checkSignature(orderData, signatures) {
         (bytes4 selector, uint chainid, uint id, address reciever) = abi.decode(
             orderData,
             (bytes4, uint, uint, address)
@@ -110,9 +101,9 @@ contract Swapica is UUPSUpgradeable, OwnableUpgradeable {
     /// MATCH PART
 
     function createMatch(
-        bytes memory orderData,
-        bytes memory signature
-    ) external checkSignature(orderData, signature) {
+        bytes calldata orderData,
+        bytes[] calldata signatures
+    ) external checkSignature(orderData, signatures) {
         (
             bytes4 selector,
             uint chainid,
@@ -132,9 +123,9 @@ contract Swapica is UUPSUpgradeable, OwnableUpgradeable {
     }
 
     function cancelMatch(
-        bytes memory orderData,
-        bytes memory signature
-    ) external checkSignature(orderData, signature) {
+        bytes calldata orderData,
+        bytes[] calldata signatures
+    ) external checkSignature(orderData, signatures) {
         (bytes4 selector, uint chainid, uint id) = abi.decode(orderData, (bytes4, uint, uint));
         require(selector == this.cancelMatch.selector, "Wrong Selector");
         _checkChainid(chainid);
@@ -147,9 +138,9 @@ contract Swapica is UUPSUpgradeable, OwnableUpgradeable {
     }
 
     function finializeMatch(
-        bytes memory orderData,
-        bytes memory signature
-    ) external checkSignature(orderData, signature) {
+        bytes calldata orderData,
+        bytes[] calldata signatures
+    ) external checkSignature(orderData, signatures) {
         (bytes4 selector, uint chainid, uint id, address reciever) = abi.decode(
             orderData,
             (bytes4, uint, uint, address)
@@ -174,11 +165,6 @@ contract Swapica is UUPSUpgradeable, OwnableUpgradeable {
     function release(address coin, address account, address to, uint amount) internal {
         locked[account][coin] -= amount;
         SafeERC20.safeTransfer(IERC20(coin), to, amount);
-    }
-
-    function _checkSignature(bytes memory orderData, bytes memory signature) internal {
-        address signer = orderData.toEthSignedMessageHash().recover(signature);
-        require(signer == validator, "Signer must be ...");
     }
 
     function _checkChainid(uint256 chainid) internal {
