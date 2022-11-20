@@ -9,7 +9,8 @@ contract Swapica is UUPSUpgradeable, OwnableUpgradeable {
     using ECDSA for bytes32;
     using ECDSA for bytes;
 
-    event OrderCreated(uint indexed id);
+    event OrderUpdated(uint indexed id, Status indexed status);
+    event MatchUpdated(uint indexed id, Status indexed status);
 
     struct Order {
         uint256 id;
@@ -38,7 +39,7 @@ contract Swapica is UUPSUpgradeable, OwnableUpgradeable {
         EXECUTED
     }
 
-    address validator;
+    address public validator;
     Order[] public orders;
     Match[] public matches;
     mapping(uint => Status) public orderStatus;
@@ -70,19 +71,12 @@ contract Swapica is UUPSUpgradeable, OwnableUpgradeable {
         uint amountToBuy,
         uint destChain
     ) external {
-        emit OrderCreated(orders.length);
+        uint id = orders.length;
         lock(tokenToSell, msg.sender, amountToSell);
-        orderStatus[orders.length] = Status.AWAITING_MATCH;
+        orderStatus[id] = Status.AWAITING_MATCH;
+        emit OrderUpdated(id, orderStatus[id]);
         orders.push(
-            Order(
-                orders.length,
-                msg.sender,
-                tokenToSell,
-                tokenToBuy,
-                amountToSell,
-                amountToBuy,
-                destChain
-            )
+            Order(id, msg.sender, tokenToSell, tokenToBuy, amountToSell, amountToBuy, destChain)
         );
     }
 
@@ -91,6 +85,7 @@ contract Swapica is UUPSUpgradeable, OwnableUpgradeable {
         require(orderStatus[id] == Status.AWAITING_MATCH, "Order's status is wrong");
         require(order.account == msg.sender);
         orderStatus[id] = Status.CANCALLED;
+        emit OrderUpdated(id, orderStatus[id]);
         release(order.tokenToSell, order.account, order.account, order.amountToSell);
     }
 
@@ -108,6 +103,7 @@ contract Swapica is UUPSUpgradeable, OwnableUpgradeable {
 
         Order storage order = orders[id];
         orderStatus[id] = Status.EXECUTED;
+        emit OrderUpdated(id, orderStatus[id]);
         release(order.tokenToSell, order.account, reciever, order.amountToSell);
     }
 
@@ -128,11 +124,11 @@ contract Swapica is UUPSUpgradeable, OwnableUpgradeable {
         require(selector == this.createMatch.selector, "Wrong Selector");
         _checkChainid(chainid);
 
-        matchStatus[matches.length] = Status.AWAITING_FINALIZATION;
-        matches.push(
-            Match(matches.length, orderId, msg.sender, tokenToSell, amountToSell, originChain)
-        );
         lock(tokenToSell, msg.sender, amountToSell);
+        uint id = matches.length;
+        matches.push(Match(id, orderId, msg.sender, tokenToSell, amountToSell, originChain));
+        matchStatus[id] = Status.AWAITING_FINALIZATION;
+        emit MatchUpdated(id, matchStatus[id]);
     }
 
     function cancelMatch(
@@ -146,6 +142,7 @@ contract Swapica is UUPSUpgradeable, OwnableUpgradeable {
 
         Match storage order = matches[id];
         matchStatus[id] = Status.CANCALLED;
+        emit MatchUpdated(id, matchStatus[id]);
         release(order.tokenToSell, order.account, order.account, order.amountToSell);
     }
 
@@ -163,6 +160,7 @@ contract Swapica is UUPSUpgradeable, OwnableUpgradeable {
 
         Match storage order = matches[id];
         matchStatus[id] = Status.EXECUTED;
+        emit MatchUpdated(id, matchStatus[id]);
         release(order.tokenToSell, order.account, reciever, order.amountToSell);
     }
 
