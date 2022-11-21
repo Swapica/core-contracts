@@ -40,11 +40,11 @@ abstract contract Signers is OwnableUpgradeable {
         require(signers_.length >= signaturesThreshold, "Signers: threshold is not met");
     }
 
-    function _checkSignatures(bytes calldata data, bytes[] calldata signatures_) internal view {
+    function _checkSignatures(bytes32 signHash_, bytes[] calldata signatures_) internal view {
         address[] memory signers_ = new address[](signatures_.length);
 
         for (uint256 i = 0; i < signatures_.length; i++) {
-            signers_[i] = data.toEthSignedMessageHash().recover(signatures_[i]);
+            signers_[i] = signHash_.toEthSignedMessageHash().recover(signatures_[i]);
         }
 
         _checkCorrectSigners(signers_);
