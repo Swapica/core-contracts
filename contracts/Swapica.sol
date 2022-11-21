@@ -84,7 +84,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         bytes calldata orderData,
         bytes[] calldata signatures
     ) external checkSignature(orderData, signatures) {
-        (bytes4 selector, uint chainid, uint id, address reciever) = abi.decode(
+        (bytes4 selector, uint chainid, uint id, address receiver) = abi.decode(
             orderData,
             (bytes4, uint, uint, address)
         );
@@ -95,7 +95,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         Order storage order = orders[id];
         orderStatus[id] = Status.EXECUTED;
         emit OrderUpdated(id, orderStatus[id]);
-        release(order.tokenToSell, order.account, reciever, order.amountToSell);
+        release(order.tokenToSell, order.account, receiver, order.amountToSell);
     }
 
     /// MATCH PART
@@ -141,7 +141,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         bytes calldata orderData,
         bytes[] calldata signatures
     ) external checkSignature(orderData, signatures) {
-        (bytes4 selector, uint chainid, uint id, address reciever) = abi.decode(
+        (bytes4 selector, uint chainid, uint id, address receiver) = abi.decode(
             orderData,
             (bytes4, uint, uint, address)
         );
@@ -152,7 +152,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         Match storage order = matches[id];
         matchStatus[id] = Status.EXECUTED;
         emit MatchUpdated(id, matchStatus[id]);
-        release(order.tokenToSell, order.account, reciever, order.amountToSell);
+        release(order.tokenToSell, order.account, receiver, order.amountToSell);
     }
 
     /// FUNDS MANIPULATING
