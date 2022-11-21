@@ -131,6 +131,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         require(matchStatus[id] == Status.AWAITING_FINALIZATION, "Order's status is wrong");
 
         Match storage order = matches[id];
+        require(order.account == msg.sender);
         matchStatus[id] = Status.CANCELED;
         emit MatchUpdated(id, matchStatus[id]);
         release(order.tokenToSell, order.account, order.account, order.amountToSell);
