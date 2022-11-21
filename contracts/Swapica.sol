@@ -35,7 +35,6 @@ contract Swapica is UUPSUpgradeable, Signers {
         EXECUTED
     }
 
-    address public validator;
     Order[] public orders;
     Match[] public matches;
     mapping(uint => Status) public orderStatus;
