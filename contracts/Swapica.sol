@@ -31,7 +31,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         NONE,
         AWAITING_MATCH,
         AWAITING_FINALIZATION,
-        CANCALLED,
+        CANCELED,
         EXECUTED
     }
 
@@ -75,7 +75,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         Order storage order = orders[id];
         require(orderStatus[id] == Status.AWAITING_MATCH, "Order's status is wrong");
         require(order.account == msg.sender);
-        orderStatus[id] = Status.CANCALLED;
+        orderStatus[id] = Status.CANCELED;
         emit OrderUpdated(id, orderStatus[id]);
         release(order.tokenToSell, order.account, order.account, order.amountToSell);
     }
@@ -132,7 +132,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         require(matchStatus[id] == Status.AWAITING_FINALIZATION, "Order's status is wrong");
 
         Match storage order = matches[id];
-        matchStatus[id] = Status.CANCALLED;
+        matchStatus[id] = Status.CANCELED;
         emit MatchUpdated(id, matchStatus[id]);
         release(order.tokenToSell, order.account, order.account, order.amountToSell);
     }
