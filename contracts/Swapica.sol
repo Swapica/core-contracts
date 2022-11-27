@@ -26,6 +26,12 @@ contract Swapica is UUPSUpgradeable, Signers {
         uint256 amountToSell; // destination chain
         uint originChain;
     }
+    enum Selector {
+        EXECUTE_ORDER,
+        EXECUTE_MATCH,
+        CREATE_MATCH,
+        CANCEL_MATCH
+    }
 
     enum Status {
         NONE,
@@ -83,11 +89,11 @@ contract Swapica is UUPSUpgradeable, Signers {
         bytes calldata orderData,
         bytes[] calldata signatures
     ) external checkSignature(orderData, signatures) {
-        (bytes4 selector, uint chainid, address swapica, uint id, address receiver) = abi.decode(
+        (Selector selector, uint chainid, address swapica, uint id, address receiver) = abi.decode(
             orderData,
-            (bytes4, uint, address, uint, address)
+            (Selector, uint, address, uint, address)
         );
-        require(selector == this.executeOrder.selector, "Wrong Selector");
+        require(selector == Selector.EXECUTE_ORDER, "Wrong Selector");
         require(orderStatus[id] == Status.AWAITING_MATCH);
         _checkSignatureRecipient(chainid, swapica);
 
@@ -104,15 +110,15 @@ contract Swapica is UUPSUpgradeable, Signers {
         bytes[] calldata signatures
     ) external checkSignature(orderData, signatures) {
         (
-            bytes4 selector,
+            Selector selector,
             uint chainid,
             address swapica,
             uint orderId,
             address tokenToSell,
             uint amountToSell,
             uint originChain
-        ) = abi.decode(orderData, (bytes4, uint, address, uint, address, uint, uint));
-        require(selector == this.createMatch.selector, "Wrong Selector");
+        ) = abi.decode(orderData, (Selector, uint, address, uint, address, uint, uint));
+        require(selector == Selector.CREATE_MATCH, "Wrong Selector");
         _checkSignatureRecipient(chainid, swapica);
 
         lock(tokenToSell, msg.sender, amountToSell);
@@ -126,11 +132,11 @@ contract Swapica is UUPSUpgradeable, Signers {
         bytes calldata orderData,
         bytes[] calldata signatures
     ) external checkSignature(orderData, signatures) {
-        (bytes4 selector, uint chainid, address swapica, uint id) = abi.decode(
+        (Selector selector, uint chainid, address swapica, uint id) = abi.decode(
             orderData,
-            (bytes4, uint, address, uint)
+            (Selector, uint, address, uint)
         );
-        require(selector == this.cancelMatch.selector, "Wrong Selector");
+        require(selector == Selector.CANCEL_MATCH, "Wrong Selector");
         _checkSignatureRecipient(chainid, swapica);
         require(matchStatus[id] == Status.AWAITING_FINALIZATION, "Order's status is wrong");
 
@@ -141,16 +147,16 @@ contract Swapica is UUPSUpgradeable, Signers {
         release(order.tokenToSell, order.account, order.account, order.amountToSell);
     }
 
-    function finializeMatch(
+    function executeMatch(
         bytes calldata orderData,
         bytes[] calldata signatures
     ) external checkSignature(orderData, signatures) {
-        (bytes4 selector, uint chainid, address swapica, uint id, address receiver) = abi.decode(
+        (Selector selector, uint chainid, address swapica, uint id, address receiver) = abi.decode(
             orderData,
-            (bytes4, uint, address, uint, address)
+            (Selector, uint, address, uint, address)
         );
         _checkSignatureRecipient(chainid, swapica);
-        require(selector == this.finializeMatch.selector, "Wrong Selector");
+        require(selector == Selector.EXECUTE_MATCH, "Wrong Selector");
         require(matchStatus[id] == Status.AWAITING_FINALIZATION, "Order's status is wrong");
 
         Match storage order = matches[id];
