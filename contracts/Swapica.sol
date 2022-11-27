@@ -33,7 +33,11 @@ contract Swapica is UUPSUpgradeable, Signers {
         CANCEL_MATCH
     }
 
-    enum Status {
+    struct Status {
+        State state;
+        uint256 executedBy;
+    }
+    enum State {
         NONE,
         AWAITING_MATCH,
         AWAITING_FINALIZATION,
@@ -69,7 +73,7 @@ contract Swapica is UUPSUpgradeable, Signers {
     ) external {
         uint id = orders.length;
         lock(tokenToSell, msg.sender, amountToSell);
-        orderStatus[id] = Status.AWAITING_MATCH;
+        orderStatus[id].state = State.AWAITING_MATCH;
         emit OrderUpdated(id, orderStatus[id]);
         orders.push(
             Order(id, msg.sender, tokenToSell, tokenToBuy, amountToSell, amountToBuy, destChain)
@@ -78,9 +82,9 @@ contract Swapica is UUPSUpgradeable, Signers {
 
     function cancelOrder(uint id) external {
         Order storage order = orders[id];
-        require(orderStatus[id] == Status.AWAITING_MATCH, "Order's status is wrong");
+        require(orderStatus[id].state == State.AWAITING_MATCH, "Order's status is wrong");
         require(order.account == msg.sender);
-        orderStatus[id] = Status.CANCELED;
+        orderStatus[id].state = State.CANCELED;
         emit OrderUpdated(id, orderStatus[id]);
         release(order.tokenToSell, order.account, order.account, order.amountToSell);
     }
@@ -89,16 +93,22 @@ contract Swapica is UUPSUpgradeable, Signers {
         bytes calldata orderData,
         bytes[] calldata signatures
     ) external checkSignature(orderData, signatures) {
-        (Selector selector, uint chainid, address swapica, uint id, address receiver) = abi.decode(
-            orderData,
-            (Selector, uint, address, uint, address)
-        );
+        (
+            Selector selector,
+            uint chainid,
+            address swapica,
+            uint id,
+            address receiver,
+            uint matchid
+        ) = abi.decode(orderData, (Selector, uint, address, uint, address, uint));
         require(selector == Selector.EXECUTE_ORDER, "Wrong Selector");
-        require(orderStatus[id] == Status.AWAITING_MATCH);
+        require(orderStatus[id].state == State.AWAITING_MATCH);
         _checkSignatureRecipient(chainid, swapica);
 
         Order storage order = orders[id];
-        orderStatus[id] = Status.EXECUTED;
+        orderStatus[id].state = State.EXECUTED;
+        orderStatus[id].executedBy = matchid;
+        // orderStatus[id] = Status(State.EXECUTED, matchid);
         emit OrderUpdated(id, orderStatus[id]);
         release(order.tokenToSell, order.account, receiver, order.amountToSell);
     }
@@ -124,7 +134,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         lock(tokenToSell, msg.sender, amountToSell);
         uint id = matches.length;
         matches.push(Match(id, orderId, msg.sender, tokenToSell, amountToSell, originChain));
-        matchStatus[id] = Status.AWAITING_FINALIZATION;
+        matchStatus[id].state = State.AWAITING_FINALIZATION;
         emit MatchUpdated(id, matchStatus[id]);
     }
 
@@ -138,11 +148,11 @@ contract Swapica is UUPSUpgradeable, Signers {
         );
         require(selector == Selector.CANCEL_MATCH, "Wrong Selector");
         _checkSignatureRecipient(chainid, swapica);
-        require(matchStatus[id] == Status.AWAITING_FINALIZATION, "Order's status is wrong");
+        require(matchStatus[id].state == State.AWAITING_FINALIZATION, "Order's status is wrong");
 
         Match storage order = matches[id];
         require(order.account == msg.sender);
-        matchStatus[id] = Status.CANCELED;
+        matchStatus[id].state = State.CANCELED;
         emit MatchUpdated(id, matchStatus[id]);
         release(order.tokenToSell, order.account, order.account, order.amountToSell);
     }
@@ -157,10 +167,10 @@ contract Swapica is UUPSUpgradeable, Signers {
         );
         _checkSignatureRecipient(chainid, swapica);
         require(selector == Selector.EXECUTE_MATCH, "Wrong Selector");
-        require(matchStatus[id] == Status.AWAITING_FINALIZATION, "Order's status is wrong");
+        require(matchStatus[id].state == State.AWAITING_FINALIZATION, "Order's status is wrong");
 
         Match storage order = matches[id];
-        matchStatus[id] = Status.EXECUTED;
+        matchStatus[id].state = State.EXECUTED;
         emit MatchUpdated(id, matchStatus[id]);
         release(order.tokenToSell, order.account, receiver, order.amountToSell);
     }

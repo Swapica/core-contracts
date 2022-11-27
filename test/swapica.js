@@ -46,14 +46,14 @@ describe("CrossBook", function () {
       let tx;
       tx = await orderBook.createOrder(realToken.address, AMOUNT, testToken.address, AMOUNT2, NETWORK);
       expect(tx).to.emit(orderBook, "OrderCreated").withArgs(0);
-      expect(await orderBook.orderStatus(0)).to.equal(1);
+      expect((await orderBook.orderStatus(0)).state).to.equal(1);
       expect((await orderBook.orders(0)).id).to.equal(0);
       expect(await orderBook.locked(accounts[0], realToken.address)).to.equal(AMOUNT);
-      expect(await orderBook.orderStatus(1)).to.equal(0);
+      expect((await orderBook.orderStatus(1)).state).to.equal(0);
 
       tx = await orderBook.createOrder(realToken.address, AMOUNT, testToken.address, AMOUNT2, NETWORK);
       expect(tx).to.emit(orderBook, "OrderCreated").withArgs(1);
-      expect(await orderBook.orderStatus(1)).to.equal(1);
+      expect((await orderBook.orderStatus(1)).state).to.equal(1);
       expect((await orderBook.orders(1)).id).to.equal(1);
       expect(await orderBook.locked(accounts[0], realToken.address)).to.equal(AMOUNT * 2);
     });
@@ -78,8 +78,8 @@ describe("CrossBook", function () {
     });
 
     const executeData = web3.eth.abi.encodeParameters(
-      ["uint256", "uint", "address", "uint", "address"],
-      [executeOrderSelector, 31337, orderBook.address, 0, (await matchBook.matches(0)).account]
+      ["uint256", "uint", "address", "uint", "address", "uint"],
+      [executeOrderSelector, 31337, orderBook.address, 0, (await matchBook.matches(0)).account, 0]
     );
     await orderBook.executeOrder(executeData, [await web3.eth.sign(web3.utils.keccak256(executeData), accounts[0])]);
     expect(await realToken.balanceOf(accounts[1])).to.equal(TOTAL - AMOUNT);
