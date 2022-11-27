@@ -88,8 +88,8 @@ contract Swapica is UUPSUpgradeable, Signers {
             (bytes4, uint, address, uint, address)
         );
         require(selector == this.executeOrder.selector, "Wrong Selector");
-        _checkChainid(chainid);
         require(orderStatus[id] == Status.AWAITING_MATCH);
+        _checkSignatureRecipient(chainid, swapica);
 
         Order storage order = orders[id];
         orderStatus[id] = Status.EXECUTED;
@@ -113,7 +113,7 @@ contract Swapica is UUPSUpgradeable, Signers {
             uint originChain
         ) = abi.decode(orderData, (bytes4, uint, address, uint, address, uint, uint));
         require(selector == this.createMatch.selector, "Wrong Selector");
-        _checkChainid(chainid);
+        _checkSignatureRecipient(chainid, swapica);
 
         lock(tokenToSell, msg.sender, amountToSell);
         uint id = matches.length;
@@ -131,7 +131,7 @@ contract Swapica is UUPSUpgradeable, Signers {
             (bytes4, uint, address, uint)
         );
         require(selector == this.cancelMatch.selector, "Wrong Selector");
-        _checkChainid(chainid);
+        _checkSignatureRecipient(chainid, swapica);
         require(matchStatus[id] == Status.AWAITING_FINALIZATION, "Order's status is wrong");
 
         Match storage order = matches[id];
@@ -149,8 +149,8 @@ contract Swapica is UUPSUpgradeable, Signers {
             orderData,
             (bytes4, uint, address, uint, address)
         );
+        _checkSignatureRecipient(chainid, swapica);
         require(selector == this.finializeMatch.selector, "Wrong Selector");
-        _checkChainid(chainid);
         require(matchStatus[id] == Status.AWAITING_FINALIZATION, "Order's status is wrong");
 
         Match storage order = matches[id];
@@ -171,7 +171,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         SafeERC20.safeTransfer(IERC20(coin), to, amount);
     }
 
-    function _checkChainid(uint256 chainid) internal {
-        require(block.chainid == chainid, "ChainId Error");
+    function _checkSignatureRecipient(uint256 chainid, address swapica) internal {
+        require(block.chainid == chainid && address(this) == swapica, "Wrong Signature Recipient");
     }
 }
