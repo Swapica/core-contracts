@@ -83,9 +83,9 @@ contract Swapica is UUPSUpgradeable, Signers {
         bytes calldata orderData,
         bytes[] calldata signatures
     ) external checkSignature(orderData, signatures) {
-        (bytes4 selector, uint chainid, uint id, address receiver) = abi.decode(
+        (bytes4 selector, uint chainid, address swapica, uint id, address receiver) = abi.decode(
             orderData,
-            (bytes4, uint, uint, address)
+            (bytes4, uint, address, uint, address)
         );
         require(selector == this.executeOrder.selector, "Wrong Selector");
         _checkChainid(chainid);
@@ -106,11 +106,12 @@ contract Swapica is UUPSUpgradeable, Signers {
         (
             bytes4 selector,
             uint chainid,
+            address swapica,
             uint orderId,
             address tokenToSell,
             uint amountToSell,
             uint originChain
-        ) = abi.decode(orderData, (bytes4, uint, uint, address, uint, uint));
+        ) = abi.decode(orderData, (bytes4, uint, address, uint, address, uint, uint));
         require(selector == this.createMatch.selector, "Wrong Selector");
         _checkChainid(chainid);
 
@@ -125,7 +126,10 @@ contract Swapica is UUPSUpgradeable, Signers {
         bytes calldata orderData,
         bytes[] calldata signatures
     ) external checkSignature(orderData, signatures) {
-        (bytes4 selector, uint chainid, uint id) = abi.decode(orderData, (bytes4, uint, uint));
+        (bytes4 selector, uint chainid, address swapica, uint id) = abi.decode(
+            orderData,
+            (bytes4, uint, address, uint)
+        );
         require(selector == this.cancelMatch.selector, "Wrong Selector");
         _checkChainid(chainid);
         require(matchStatus[id] == Status.AWAITING_FINALIZATION, "Order's status is wrong");
@@ -141,9 +145,9 @@ contract Swapica is UUPSUpgradeable, Signers {
         bytes calldata orderData,
         bytes[] calldata signatures
     ) external checkSignature(orderData, signatures) {
-        (bytes4 selector, uint chainid, uint id, address receiver) = abi.decode(
+        (bytes4 selector, uint chainid, address swapica, uint id, address receiver) = abi.decode(
             orderData,
-            (bytes4, uint, uint, address)
+            (bytes4, uint, address, uint, address)
         );
         require(selector == this.finializeMatch.selector, "Wrong Selector");
         _checkChainid(chainid);
