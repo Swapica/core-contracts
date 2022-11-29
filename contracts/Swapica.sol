@@ -72,7 +72,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         uint destChain
     ) external {
         uint id = orders.length;
-        lock(tokenToSell, msg.sender, amountToSell);
+        _lock(tokenToSell, msg.sender, amountToSell);
         orderStatus[id].state = State.AWAITING_MATCH;
         emit OrderUpdated(id, orderStatus[id]);
         orders.push(
@@ -86,7 +86,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         require(order.account == msg.sender);
         orderStatus[id].state = State.CANCELED;
         emit OrderUpdated(id, orderStatus[id]);
-        release(order.tokenToSell, order.account, order.account, order.amountToSell);
+        _release(order.tokenToSell, order.account, order.account, order.amountToSell);
     }
 
     function executeOrder(
@@ -110,7 +110,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         orderStatus[id].executedBy = matchid;
         // orderStatus[id] = Status(State.EXECUTED, matchid);
         emit OrderUpdated(id, orderStatus[id]);
-        release(order.tokenToSell, order.account, receiver, order.amountToSell);
+        _release(order.tokenToSell, order.account, receiver, order.amountToSell);
     }
 
     /// MATCH PART
@@ -131,7 +131,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         require(selector == Selector.CREATE_MATCH, "Wrong Selector");
         _checkSignatureRecipient(chainid, swapica);
 
-        lock(tokenToSell, msg.sender, amountToSell);
+        _lock(tokenToSell, msg.sender, amountToSell);
         uint id = matches.length;
         matches.push(Match(id, orderId, msg.sender, tokenToSell, amountToSell, originChain));
         matchStatus[id].state = State.AWAITING_FINALIZATION;
@@ -154,7 +154,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         require(order.account == msg.sender);
         matchStatus[id].state = State.CANCELED;
         emit MatchUpdated(id, matchStatus[id]);
-        release(order.tokenToSell, order.account, order.account, order.amountToSell);
+        _release(order.tokenToSell, order.account, order.account, order.amountToSell);
     }
 
     function executeMatch(
@@ -172,17 +172,17 @@ contract Swapica is UUPSUpgradeable, Signers {
         Match storage order = matches[id];
         matchStatus[id].state = State.EXECUTED;
         emit MatchUpdated(id, matchStatus[id]);
-        release(order.tokenToSell, order.account, receiver, order.amountToSell);
+        _release(order.tokenToSell, order.account, receiver, order.amountToSell);
     }
 
     /// FUNDS MANIPULATING
 
-    function lock(address coin, address account, uint amount) internal {
+    function _lock(address coin, address account, uint amount) internal {
         locked[account][coin] += amount;
         SafeERC20.safeTransferFrom(IERC20(coin), account, address(this), amount);
     }
 
-    function release(address coin, address account, address to, uint amount) internal {
+    function _release(address coin, address account, address to, uint amount) internal {
         locked[account][coin] -= amount;
         SafeERC20.safeTransfer(IERC20(coin), to, amount);
     }
