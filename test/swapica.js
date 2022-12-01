@@ -68,7 +68,6 @@ describe("CrossBook", function () {
   });
   it("scenario", async function () {
     await orderBook.createOrder(realToken.address, AMOUNT, testToken.address, AMOUNT2, NETWORK, { from: accounts[1] });
-
     const matchData = web3.eth.abi.encodeParameters(
       ["uint256", "uint", "address", "uint", "address", "uint", "uint"],
       [createMatchSelector, 31337, matchBook.address, 0, testToken.address, AMOUNT2, NETWORK]
