@@ -82,7 +82,7 @@ contract Swapica is UUPSUpgradeable, Signers {
 
     function cancelOrder(uint id) external {
         Order storage order = orders[id];
-        require(orderStatus[id].state == State.AWAITING_MATCH, "Order's status is wrong");
+        require(orderStatus[id].state == State.AWAITING_MATCH, "Order status is wrong");
         require(order.account == msg.sender);
         orderStatus[id].state = State.CANCELED;
         emit OrderUpdated(id, orderStatus[id]);
@@ -108,7 +108,6 @@ contract Swapica is UUPSUpgradeable, Signers {
         Order storage order = orders[id];
         orderStatus[id].state = State.EXECUTED;
         orderStatus[id].executedBy = matchid;
-        // orderStatus[id] = Status(State.EXECUTED, matchid);
         emit OrderUpdated(id, orderStatus[id]);
         _release(order.tokenToSell, order.account, receiver, order.amountToSell);
     }
@@ -148,7 +147,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         );
         require(selector == Selector.CANCEL_MATCH, "Wrong Selector");
         _checkSignatureRecipient(chainid, swapica);
-        require(matchStatus[id].state == State.AWAITING_FINALIZATION, "Order's status is wrong");
+        require(matchStatus[id].state == State.AWAITING_FINALIZATION, "Order status is wrong");
 
         Match storage order = matches[id];
         require(order.account == msg.sender);
@@ -167,7 +166,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         );
         _checkSignatureRecipient(chainid, swapica);
         require(selector == Selector.EXECUTE_MATCH, "Wrong Selector");
-        require(matchStatus[id].state == State.AWAITING_FINALIZATION, "Order's status is wrong");
+        require(matchStatus[id].state == State.AWAITING_FINALIZATION, "Order status is wrong");
 
         Match storage order = matches[id];
         matchStatus[id].state = State.EXECUTED;
@@ -175,7 +174,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         _release(order.tokenToSell, order.account, receiver, order.amountToSell);
     }
 
-    /// FUNDS MANIPULATING
+    /// FUNDS MANIPULATION
 
     function _lock(address coin, address account, uint amount) internal {
         locked[account][coin] += amount;
