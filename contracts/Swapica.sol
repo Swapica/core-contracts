@@ -55,7 +55,7 @@ contract Swapica is UUPSUpgradeable, Signers {
     mapping(uint => Status) public matchStatus;
     mapping(address => mapping(address => uint)) public locked;
 
-    mapping(address => User) userInfo;
+    mapping(address => User) internal userInfo;
 
     modifier checkSignature(bytes calldata orderData, bytes[] calldata signatures) {
         _checkSignatures(keccak256(orderData), signatures);
