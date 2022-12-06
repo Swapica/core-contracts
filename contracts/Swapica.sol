@@ -228,8 +228,8 @@ contract Swapica is UUPSUpgradeable, Signers {
             count++;
         }
         result = new Order[](count);
+        uint j;
         for (uint i = begin; i < end; i++) {
-            uint j;
             State s = orderStatus[i].state;
             if (s == State.EXECUTED || s == State.CANCELED) continue;
             result[j++] = ids[i];
