@@ -199,7 +199,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         }
     }
 
-    function getUsersMatches(
+    function getUserMatches(
         address user,
         uint begin,
         uint end
