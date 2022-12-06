@@ -195,7 +195,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         if (end <= begin) return result;
         result = new Order[](end - begin);
         for (uint i = 0; i < result.length; i++) {
-            result[i] = orders[begin + i];
+            result[i] = orders[ids[begin + i]];
         }
     }
 
@@ -211,7 +211,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         if (end <= begin) return result;
         result = new Match[](end - begin);
         for (uint i = 0; i < result.length; i++) {
-            result[i] = matches[begin + i];
+            result[i] = matches[ids[begin + i]];
         }
     }
 
