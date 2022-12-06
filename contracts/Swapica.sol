@@ -78,7 +78,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         address tokenToBuy,
         uint amountToBuy,
         uint destChain
-    ) external {
+    ) external payable {
         uint id = orders.length;
         _lock(tokenToSell, msg.sender, amountToSell);
         orderStatus[id].state = State.AWAITING_MATCH;
@@ -126,7 +126,7 @@ contract Swapica is UUPSUpgradeable, Signers {
     function createMatch(
         bytes calldata orderData,
         bytes[] calldata signatures
-    ) external checkSignature(orderData, signatures) {
+    ) external payable checkSignature(orderData, signatures) {
         (
             Selector selector,
             uint chainid,
@@ -252,7 +252,8 @@ contract Swapica is UUPSUpgradeable, Signers {
     function _release(address coin, address account, address to, uint amount) internal {
         locked[account][coin] -= amount;
         if (NATIVE == coin) {
-            account.call{value: amount, gas: 21000}("");
+            (bool _s, ) = to.call{value: amount, gas: 21000}("");
+            assert(_s);
         } else {
             SafeERC20.safeTransfer(IERC20(coin), to, amount);
         }

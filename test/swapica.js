@@ -1,6 +1,8 @@
 const { excpect } = require("chai");
 const hardhat = require("hardhat");
 const Reverter = require("./helpers/reverter.js");
+const { BigNumber } = require("bignumber.js");
+
 const Book = artifacts.require("Swapica");
 const Token = artifacts.require("ERC20Mock");
 
@@ -10,6 +12,8 @@ describe("CrossBook", function () {
   let realToken;
   let testToken;
   let accounts;
+
+  const NATIVE = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE";
   const reverter = new Reverter();
   const TOTAL = 100_000;
   const AMOUNT = 123;
@@ -66,35 +70,75 @@ describe("CrossBook", function () {
       expect(await realToken.balanceOf(accounts[0])).to.equal(TOTAL);
     });
   });
-  it("scenario", async function () {
-    await orderBook.createOrder(realToken.address, AMOUNT, testToken.address, AMOUNT2, NETWORK, { from: accounts[1] });
-    const matchData = web3.eth.abi.encodeParameters(
-      ["uint256", "uint", "address", "uint", "address", "uint", "uint"],
-      [createMatchSelector, 31337, matchBook.address, 0, testToken.address, AMOUNT2, NETWORK]
-    );
-    await matchBook.createMatch(matchData, [await web3.eth.sign(web3.utils.keccak256(matchData), accounts[0])], {
-      from: accounts[2],
+  describe("successful scenarios", function () {
+    it("erc20 scenario", async function () {
+      await orderBook.createOrder(realToken.address, AMOUNT, testToken.address, AMOUNT2, NETWORK, {
+        from: accounts[1],
+      });
+
+      const matchData = web3.eth.abi.encodeParameters(
+        ["uint256", "uint", "address", "uint", "address", "uint", "uint"],
+        [createMatchSelector, 31337, matchBook.address, 0, testToken.address, AMOUNT2, NETWORK]
+      );
+      await matchBook.createMatch(matchData, [await web3.eth.sign(web3.utils.keccak256(matchData), accounts[0])], {
+        from: accounts[2],
+      });
+
+      const executeData = web3.eth.abi.encodeParameters(
+        ["uint256", "uint", "address", "uint", "address", "uint"],
+        [executeOrderSelector, 31337, orderBook.address, 0, (await matchBook.matches(0)).account, 0]
+      );
+      await orderBook.executeOrder(executeData, [await web3.eth.sign(web3.utils.keccak256(executeData), accounts[0])]);
+      expect(await realToken.balanceOf(accounts[1])).to.equal(TOTAL - AMOUNT);
+      expect(await realToken.balanceOf(accounts[2])).to.equal(AMOUNT);
+      expect(await testToken.balanceOf(accounts[1])).to.equal(0);
+      expect(await testToken.balanceOf(accounts[2])).to.equal(TOTAL - AMOUNT2);
+
+      const finilizeData = web3.eth.abi.encodeParameters(
+        ["uint256", "uint", "address", "uint", "address"],
+        [executeMatchSelector, 31337, matchBook.address, 0, (await orderBook.orders(0)).account]
+      );
+      await matchBook.executeMatch(finilizeData, [
+        await web3.eth.sign(web3.utils.keccak256(finilizeData), accounts[0]),
+      ]);
+
+      expect(await realToken.balanceOf(accounts[1])).to.equal(TOTAL - AMOUNT);
+      expect(await testToken.balanceOf(accounts[1])).to.equal(AMOUNT2);
+      expect(await realToken.balanceOf(accounts[2])).to.equal(AMOUNT);
+      expect(await testToken.balanceOf(accounts[2])).to.equal(TOTAL - AMOUNT2);
     });
+    it("native coin scenario", async function () {
+      //await expect(orderBook.createOrder(NATIVE, AMOUNT, NATIVE, AMOUNT2, NETWORK, { from: accounts[1]})).to.be.revertedWith("");
+      await orderBook.createOrder(NATIVE, AMOUNT, NATIVE, AMOUNT2, NETWORK, { from: accounts[1], value: AMOUNT });
 
-    const executeData = web3.eth.abi.encodeParameters(
-      ["uint256", "uint", "address", "uint", "address", "uint"],
-      [executeOrderSelector, 31337, orderBook.address, 0, (await matchBook.matches(0)).account, 0]
-    );
-    await orderBook.executeOrder(executeData, [await web3.eth.sign(web3.utils.keccak256(executeData), accounts[0])]);
-    expect(await realToken.balanceOf(accounts[1])).to.equal(TOTAL - AMOUNT);
-    expect(await realToken.balanceOf(accounts[2])).to.equal(AMOUNT);
-    expect(await testToken.balanceOf(accounts[1])).to.equal(0);
-    expect(await testToken.balanceOf(accounts[2])).to.equal(TOTAL - AMOUNT2);
+      const matchData = web3.eth.abi.encodeParameters(
+        ["uint256", "uint", "address", "uint", "address", "uint", "uint"],
+        [createMatchSelector, 31337, matchBook.address, 0, NATIVE, AMOUNT2, NETWORK]
+      );
+      await matchBook.createMatch(matchData, [await web3.eth.sign(web3.utils.keccak256(matchData), accounts[0])], {
+        from: accounts[2],
+        value: AMOUNT2,
+      });
 
-    const finilizeData = web3.eth.abi.encodeParameters(
-      ["uint256", "uint", "address", "uint", "address"],
-      [executeMatchSelector, 31337, matchBook.address, 0, (await orderBook.orders(0)).account]
-    );
-    await matchBook.executeMatch(finilizeData, [await web3.eth.sign(web3.utils.keccak256(finilizeData), accounts[0])]);
+      const executeData = web3.eth.abi.encodeParameters(
+        ["uint256", "uint", "address", "uint", "address", "uint"],
+        [executeOrderSelector, 31337, orderBook.address, 0, (await matchBook.matches(0)).account, 0]
+      );
+      const before1 = await web3.eth.getBalance(accounts[2]);
+      await orderBook.executeOrder(executeData, [await web3.eth.sign(web3.utils.keccak256(executeData), accounts[0])]);
+      const after1 = new BigNumber(await web3.eth.getBalance(accounts[2]));
+      expect(after1.minus(before1)).to.be.equal(AMOUNT);
 
-    expect(await realToken.balanceOf(accounts[1])).to.equal(TOTAL - AMOUNT);
-    expect(await testToken.balanceOf(accounts[1])).to.equal(AMOUNT2);
-    expect(await realToken.balanceOf(accounts[2])).to.equal(AMOUNT);
-    expect(await testToken.balanceOf(accounts[2])).to.equal(TOTAL - AMOUNT2);
+      const finilizeData = web3.eth.abi.encodeParameters(
+        ["uint256", "uint", "address", "uint", "address"],
+        [executeMatchSelector, 31337, matchBook.address, 0, (await orderBook.orders(0)).account]
+      );
+      const before2 = await web3.eth.getBalance(accounts[1]);
+      await matchBook.executeMatch(finilizeData, [
+        await web3.eth.sign(web3.utils.keccak256(finilizeData), accounts[0]),
+      ]);
+      const after2 = new BigNumber(await web3.eth.getBalance(accounts[1]));
+      expect(after2.minus(before2)).to.be.equal(AMOUNT2);
+    });
   });
 });
