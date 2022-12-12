@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./Signers.sol";
 
 contract Swapica is UUPSUpgradeable, Signers {
-    address constant NATIVE = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
+    address constant public NATIVE = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
 
     event OrderUpdated(uint indexed id, Status indexed status);
     event MatchUpdated(uint indexed id, Status indexed status);
@@ -243,7 +243,7 @@ contract Swapica is UUPSUpgradeable, Signers {
     function _lock(address coin, address account, uint amount) internal {
         locked[account][coin] += amount;
         if (NATIVE == coin) {
-            require(msg.value == amount, "");
+            require(msg.value == amount, "Value is not equal to amount");
         } else {
             SafeERC20.safeTransferFrom(IERC20(coin), account, address(this), amount);
         }
@@ -252,8 +252,8 @@ contract Swapica is UUPSUpgradeable, Signers {
     function _release(address coin, address account, address to, uint amount) internal {
         locked[account][coin] -= amount;
         if (NATIVE == coin) {
-            (bool _s, ) = to.call{value: amount, gas: 21000}("");
-            assert(_s);
+            (bool _s, ) = to.call{value: amount}("");
+            require(_s, "Transfering failed");
         } else {
             SafeERC20.safeTransfer(IERC20(coin), to, amount);
         }
