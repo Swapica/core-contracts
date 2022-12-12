@@ -44,12 +44,18 @@ contract Swapica is UUPSUpgradeable, Signers {
         CANCELED,
         EXECUTED
     }
+    struct User {
+        uint[] orderIds;
+        uint[] matchIds;
+    }
 
     Order[] public orders;
     Match[] public matches;
     mapping(uint => Status) public orderStatus;
     mapping(uint => Status) public matchStatus;
     mapping(address => mapping(address => uint)) public locked;
+
+    mapping(address => User) internal userInfo;
 
     modifier checkSignature(bytes calldata orderData, bytes[] calldata signatures) {
         _checkSignatures(keccak256(orderData), signatures);
@@ -78,6 +84,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         orders.push(
             Order(id, msg.sender, tokenToSell, tokenToBuy, amountToSell, amountToBuy, destChain)
         );
+        userInfo[msg.sender].orderIds.push(id);
     }
 
     function cancelOrder(uint id) external {
@@ -135,6 +142,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         matches.push(Match(id, orderId, msg.sender, tokenToSell, amountToSell, originChain));
         matchStatus[id].state = State.AWAITING_FINALIZATION;
         emit MatchUpdated(id, matchStatus[id]);
+        userInfo[msg.sender].matchIds.push(id);
     }
 
     function cancelMatch(
@@ -172,6 +180,60 @@ contract Swapica is UUPSUpgradeable, Signers {
         matchStatus[id].state = State.EXECUTED;
         emit MatchUpdated(id, matchStatus[id]);
         _release(order.tokenToSell, order.account, receiver, order.amountToSell);
+    }
+
+    /// VIEW
+    function getUserOrders(
+        address user,
+        uint begin,
+        uint end
+    ) external view returns (Order[] memory result) {
+        uint[] storage ids = userInfo[user].orderIds;
+        if (ids.length == 0) return result;
+        if (begin > ids.length) begin = ids.length;
+        if (end > ids.length) end = ids.length;
+        if (end <= begin) return result;
+        result = new Order[](end - begin);
+        for (uint i = 0; i < result.length; i++) {
+            result[i] = orders[ids[begin + i]];
+        }
+    }
+
+    function getUserMatches(
+        address user,
+        uint begin,
+        uint end
+    ) external view returns (Match[] memory result) {
+        uint[] storage ids = userInfo[user].matchIds;
+        if (ids.length == 0) return result;
+        if (begin > ids.length) begin = ids.length;
+        if (end > ids.length) end = ids.length;
+        if (end <= begin) return result;
+        result = new Match[](end - begin);
+        for (uint i = 0; i < result.length; i++) {
+            result[i] = matches[ids[begin + i]];
+        }
+    }
+
+    function getActiveOrders(uint begin, uint end) external view returns (Order[] memory result) {
+        Order[] storage ids = orders;
+        if (ids.length == 0) return result;
+        if (begin > ids.length) begin = ids.length;
+        if (end > ids.length) end = ids.length;
+        if (end <= begin) return result;
+        uint count;
+        for (uint i = begin; i < end; i++) {
+            State s = orderStatus[i].state;
+            if (s == State.EXECUTED || s == State.CANCELED) continue;
+            count++;
+        }
+        result = new Order[](count);
+        uint j;
+        for (uint i = begin; i < end; i++) {
+            State s = orderStatus[i].state;
+            if (s == State.EXECUTED || s == State.CANCELED) continue;
+            result[j++] = ids[i];
+        }
     }
 
     /// FUNDS MANIPULATION
