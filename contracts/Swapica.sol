@@ -253,7 +253,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         locked[account][coin] -= amount;
         if (NATIVE == coin) {
             (bool _s, ) = to.call{value: amount}("");
-            require(_s, "Transfering failed");
+            require(_s, "Transferring failed");
         } else {
             SafeERC20.safeTransfer(IERC20(coin), to, amount);
         }
