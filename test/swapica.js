@@ -85,8 +85,8 @@ describe("CrossBook", function () {
       });
 
       const executeData = web3.eth.abi.encodeParameters(
-        ["uint256", "uint", "address", "uint", "address", "uint"],
-        [executeOrderSelector, 31337, orderBook.address, 0, (await matchBook.matches(0)).account, 0]
+        ["uint256", "uint", "address", "uint", "address", "address", "uint"],
+        [executeOrderSelector, 31337, orderBook.address, 0, (await matchBook.matches(0)).account, matchBook.address, 0]
       );
       await orderBook.executeOrder(executeData, [await web3.eth.sign(web3.utils.keccak256(executeData), accounts[0])]);
       expect(await realToken.balanceOf(accounts[1])).to.equal(TOTAL - AMOUNT);
@@ -121,8 +121,8 @@ describe("CrossBook", function () {
       });
 
       const executeData = web3.eth.abi.encodeParameters(
-        ["uint256", "uint", "address", "uint", "address", "uint"],
-        [executeOrderSelector, 31337, orderBook.address, 0, (await matchBook.matches(0)).account, 0]
+        ["uint256", "uint", "address", "uint", "address", "address", "uint"],
+        [executeOrderSelector, 31337, orderBook.address, 0, (await matchBook.matches(0)).account, matchBook.address, 0]
       );
       const before1 = await web3.eth.getBalance(accounts[2]);
       await orderBook.executeOrder(executeData, [await web3.eth.sign(web3.utils.keccak256(executeData), accounts[0])]);

@@ -5,10 +5,10 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./Signers.sol";
 
 contract Swapica is UUPSUpgradeable, Signers {
-    address constant public NATIVE = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
+    address public constant NATIVE = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
 
-    event OrderUpdated(uint indexed id, Status indexed status);
-    event MatchUpdated(uint indexed id, Status indexed status);
+    event OrderUpdated(uint256 indexed id, Status indexed status);
+    event MatchUpdated(uint256 indexed id, Status indexed status);
 
     struct Order {
         uint256 id;
@@ -17,7 +17,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         address tokenToBuy; // destination chain
         uint256 amountToSell;
         uint256 amountToBuy;
-        uint destChain;
+        uint256 destChain;
     }
 
     struct Match {
@@ -26,7 +26,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         address account;
         address tokenToSell; // destination chain
         uint256 amountToSell; // destination chain
-        uint originChain;
+        uint256 originChain;
     }
     enum Selector {
         EXECUTE_ORDER,
@@ -38,7 +38,9 @@ contract Swapica is UUPSUpgradeable, Signers {
     struct Status {
         State state;
         uint256 executedBy;
+        address matchSwapica;
     }
+
     enum State {
         NONE,
         AWAITING_MATCH,
@@ -46,16 +48,17 @@ contract Swapica is UUPSUpgradeable, Signers {
         CANCELED,
         EXECUTED
     }
+
     struct User {
-        uint[] orderIds;
-        uint[] matchIds;
+        uint256[] orderIds;
+        uint256[] matchIds;
     }
 
     Order[] public orders;
     Match[] public matches;
-    mapping(uint => Status) public orderStatus;
-    mapping(uint => Status) public matchStatus;
-    mapping(address => mapping(address => uint)) public locked;
+    mapping(uint256 => Status) public orderStatus;
+    mapping(uint256 => Status) public matchStatus;
+    mapping(address => mapping(address => uint256)) public locked;
 
     mapping(address => User) internal userInfo;
 
@@ -74,12 +77,12 @@ contract Swapica is UUPSUpgradeable, Signers {
 
     function createOrder(
         address tokenToSell,
-        uint amountToSell,
+        uint256 amountToSell,
         address tokenToBuy,
-        uint amountToBuy,
-        uint destChain
+        uint256 amountToBuy,
+        uint256 destChain
     ) external payable {
-        uint id = orders.length;
+        uint256 id = orders.length;
         _lock(tokenToSell, msg.sender, amountToSell);
         orderStatus[id].state = State.AWAITING_MATCH;
         emit OrderUpdated(id, orderStatus[id]);
@@ -89,7 +92,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         userInfo[msg.sender].orderIds.push(id);
     }
 
-    function cancelOrder(uint id) external {
+    function cancelOrder(uint256 id) external {
         Order storage order = orders[id];
         require(orderStatus[id].state == State.AWAITING_MATCH, "Order status is wrong");
         require(order.account == msg.sender);
@@ -104,12 +107,16 @@ contract Swapica is UUPSUpgradeable, Signers {
     ) external checkSignature(orderData, signatures) {
         (
             Selector selector,
-            uint chainid,
+            uint256 chainid,
             address swapica,
-            uint id,
+            uint256 id,
             address receiver,
-            uint matchid
-        ) = abi.decode(orderData, (Selector, uint, address, uint, address, uint));
+            address matchSwapica,
+            uint256 matchid
+        ) = abi.decode(
+                orderData,
+                (Selector, uint256, address, uint256, address, address, uint256)
+            );
         require(selector == Selector.EXECUTE_ORDER, "Wrong Selector");
         require(orderStatus[id].state == State.AWAITING_MATCH);
         _checkSignatureRecipient(chainid, swapica);
@@ -117,6 +124,8 @@ contract Swapica is UUPSUpgradeable, Signers {
         Order storage order = orders[id];
         orderStatus[id].state = State.EXECUTED;
         orderStatus[id].executedBy = matchid;
+        orderStatus[id].matchSwapica = matchSwapica;
+
         emit OrderUpdated(id, orderStatus[id]);
         _release(order.tokenToSell, order.account, receiver, order.amountToSell);
     }
@@ -129,18 +138,21 @@ contract Swapica is UUPSUpgradeable, Signers {
     ) external payable checkSignature(orderData, signatures) {
         (
             Selector selector,
-            uint chainid,
+            uint256 chainid,
             address swapica,
-            uint orderId,
+            uint256 orderId,
             address tokenToSell,
-            uint amountToSell,
-            uint originChain
-        ) = abi.decode(orderData, (Selector, uint, address, uint, address, uint, uint));
+            uint256 amountToSell,
+            uint256 originChain
+        ) = abi.decode(
+                orderData,
+                (Selector, uint256, address, uint256, address, uint256, uint256)
+            );
         require(selector == Selector.CREATE_MATCH, "Wrong Selector");
         _checkSignatureRecipient(chainid, swapica);
 
         _lock(tokenToSell, msg.sender, amountToSell);
-        uint id = matches.length;
+        uint256 id = matches.length;
         matches.push(Match(id, orderId, msg.sender, tokenToSell, amountToSell, originChain));
         matchStatus[id].state = State.AWAITING_FINALIZATION;
         emit MatchUpdated(id, matchStatus[id]);
@@ -151,9 +163,9 @@ contract Swapica is UUPSUpgradeable, Signers {
         bytes calldata orderData,
         bytes[] calldata signatures
     ) external checkSignature(orderData, signatures) {
-        (Selector selector, uint chainid, address swapica, uint id) = abi.decode(
+        (Selector selector, uint256 chainid, address swapica, uint256 id) = abi.decode(
             orderData,
-            (Selector, uint, address, uint)
+            (Selector, uint256, address, uint256)
         );
         require(selector == Selector.CANCEL_MATCH, "Wrong Selector");
         _checkSignatureRecipient(chainid, swapica);
@@ -170,10 +182,8 @@ contract Swapica is UUPSUpgradeable, Signers {
         bytes calldata orderData,
         bytes[] calldata signatures
     ) external checkSignature(orderData, signatures) {
-        (Selector selector, uint chainid, address swapica, uint id, address receiver) = abi.decode(
-            orderData,
-            (Selector, uint, address, uint, address)
-        );
+        (Selector selector, uint256 chainid, address swapica, uint256 id, address receiver) = abi
+            .decode(orderData, (Selector, uint256, address, uint256, address));
         _checkSignatureRecipient(chainid, swapica);
         require(selector == Selector.EXECUTE_MATCH, "Wrong Selector");
         require(matchStatus[id].state == State.AWAITING_FINALIZATION, "Order status is wrong");
@@ -187,51 +197,54 @@ contract Swapica is UUPSUpgradeable, Signers {
     /// VIEW
     function getUserOrders(
         address user,
-        uint begin,
-        uint end
+        uint256 begin,
+        uint256 end
     ) external view returns (Order[] memory result) {
-        uint[] storage ids = userInfo[user].orderIds;
+        uint256[] storage ids = userInfo[user].orderIds;
         if (ids.length == 0) return result;
         if (begin > ids.length) begin = ids.length;
         if (end > ids.length) end = ids.length;
         if (end <= begin) return result;
         result = new Order[](end - begin);
-        for (uint i = 0; i < result.length; i++) {
+        for (uint256 i = 0; i < result.length; i++) {
             result[i] = orders[ids[begin + i]];
         }
     }
 
     function getUserMatches(
         address user,
-        uint begin,
-        uint end
+        uint256 begin,
+        uint256 end
     ) external view returns (Match[] memory result) {
-        uint[] storage ids = userInfo[user].matchIds;
+        uint256[] storage ids = userInfo[user].matchIds;
         if (ids.length == 0) return result;
         if (begin > ids.length) begin = ids.length;
         if (end > ids.length) end = ids.length;
         if (end <= begin) return result;
         result = new Match[](end - begin);
-        for (uint i = 0; i < result.length; i++) {
+        for (uint256 i = 0; i < result.length; i++) {
             result[i] = matches[ids[begin + i]];
         }
     }
 
-    function getActiveOrders(uint begin, uint end) external view returns (Order[] memory result) {
+    function getActiveOrders(
+        uint256 begin,
+        uint256 end
+    ) external view returns (Order[] memory result) {
         Order[] storage ids = orders;
         if (ids.length == 0) return result;
         if (begin > ids.length) begin = ids.length;
         if (end > ids.length) end = ids.length;
         if (end <= begin) return result;
-        uint count;
-        for (uint i = begin; i < end; i++) {
+        uint256 count;
+        for (uint256 i = begin; i < end; i++) {
             State s = orderStatus[i].state;
             if (s == State.EXECUTED || s == State.CANCELED) continue;
             count++;
         }
         result = new Order[](count);
-        uint j;
-        for (uint i = begin; i < end; i++) {
+        uint256 j;
+        for (uint256 i = begin; i < end; i++) {
             State s = orderStatus[i].state;
             if (s == State.EXECUTED || s == State.CANCELED) continue;
             result[j++] = ids[i];
@@ -240,7 +253,7 @@ contract Swapica is UUPSUpgradeable, Signers {
 
     /// FUNDS MANIPULATION
 
-    function _lock(address coin, address account, uint amount) internal {
+    function _lock(address coin, address account, uint256 amount) internal {
         locked[account][coin] += amount;
         if (NATIVE == coin) {
             require(msg.value == amount, "Value is not equal to amount");
@@ -249,7 +262,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         }
     }
 
-    function _release(address coin, address account, address to, uint amount) internal {
+    function _release(address coin, address account, address to, uint256 amount) internal {
         locked[account][coin] -= amount;
         if (NATIVE == coin) {
             (bool _s, ) = to.call{value: amount}("");
