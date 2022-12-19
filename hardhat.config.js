@@ -1,11 +1,11 @@
 require("@nomiclabs/hardhat-web3");
 require("@nomiclabs/hardhat-truffle5");
-require("@nomiclabs/hardhat-etherscan");
 require("@nomicfoundation/hardhat-chai-matchers");
 require("@typechain/hardhat");
 require("hardhat-contract-sizer");
 require("hardhat-gas-reporter");
 require("solidity-coverage");
+require("@dlsl/hardhat-migrate");
 
 const dotenv = require("dotenv");
 dotenv.config();
@@ -72,6 +72,9 @@ module.exports = {
       bsc: `${process.env.BSCSCAN_KEY}`,
       bscTestnet: `${process.env.BSCSCAN_KEY}`,
     },
+  },
+  migrate: {
+    pathToMigrations: "./deploy/",
   },
   mocha: {
     timeout: 1000000,
