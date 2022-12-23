@@ -211,6 +211,10 @@ contract Swapica is UUPSUpgradeable, Signers {
         }
     }
 
+    function getUserOrdersLength(address user) external view returns (uint) {
+        return userInfo[user].orderIds.length;
+    }
+
     function getUserMatches(
         address user,
         uint256 begin,
@@ -225,6 +229,10 @@ contract Swapica is UUPSUpgradeable, Signers {
         for (uint256 i = 0; i < result.length; i++) {
             result[i] = matches[ids[begin + i]];
         }
+    }
+
+    function getUserMatchesLength(address user) external view returns (uint) {
+        return userInfo[user].matchIds.length;
     }
 
     function getActiveOrders(
@@ -254,6 +262,20 @@ contract Swapica is UUPSUpgradeable, Signers {
             if (tokenToBuy != address(0) && ids[i].tokenToBuy != tokenToBuy) continue;
             if (s == State.EXECUTED || s == State.CANCELED) continue;
             result[j++] = ids[i];
+        }
+    }
+
+    function getActiveOrdersLength(
+        address tokenToSell,
+        address tokenToBuy
+    ) external view returns (uint count) {
+        Order[] storage ids = orders;
+        for (uint256 i = 0; i < orders.length; i++) {
+            State s = orderStatus[i].state;
+            if (tokenToSell != address(0) && ids[i].tokenToSell != tokenToSell) continue;
+            if (tokenToBuy != address(0) && ids[i].tokenToBuy != tokenToBuy) continue;
+            if (s == State.EXECUTED || s == State.CANCELED) continue;
+            count++;
         }
     }
 
