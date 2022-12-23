@@ -6,6 +6,10 @@ const { BigNumber } = require("bignumber.js");
 const Book = artifacts.require("Swapica");
 const Token = artifacts.require("ERC20Mock");
 
+const executeOrderSelector = 0;
+const executeMatchSelector = 1;
+const createMatchSelector = 2;
+const cancelMatchSelector = 3;
 describe("CrossBook", function () {
   let orderBook;
   let matchBook;
@@ -19,11 +23,6 @@ describe("CrossBook", function () {
   const AMOUNT = 123;
   const AMOUNT2 = 12;
   const NETWORK = 1;
-
-  const executeOrderSelector = 0;
-  const executeMatchSelector = 1;
-  const createMatchSelector = 2;
-  const cancelMatchSelector = 3;
 
   before("Deployment", async function () {
     accounts = await web3.eth.getAccounts();
@@ -76,31 +75,15 @@ describe("CrossBook", function () {
         from: accounts[1],
       });
 
-      const matchData = web3.eth.abi.encodeParameters(
-        ["uint256", "uint", "address", "uint", "address", "uint", "uint"],
-        [createMatchSelector, 31337, matchBook.address, 0, testToken.address, AMOUNT2, NETWORK]
-      );
-      await matchBook.createMatch(matchData, [await web3.eth.sign(web3.utils.keccak256(matchData), accounts[0])], {
-        from: accounts[2],
-      });
+      await createMatch(matchBook, 31337, 0, testToken.address, AMOUNT2, NETWORK, { from: accounts[2] });
 
-      const executeData = web3.eth.abi.encodeParameters(
-        ["uint256", "uint", "address", "uint", "address", "address", "uint"],
-        [executeOrderSelector, 31337, orderBook.address, 0, (await matchBook.matches(0)).account, matchBook.address, 0]
-      );
-      await orderBook.executeOrder(executeData, [await web3.eth.sign(web3.utils.keccak256(executeData), accounts[0])]);
+      await executeOrder(orderBook, 31337, 0, (await matchBook.matches(0)).account, matchBook.address, 0);
       expect(await realToken.balanceOf(accounts[1])).to.equal(TOTAL - AMOUNT);
       expect(await realToken.balanceOf(accounts[2])).to.equal(AMOUNT);
       expect(await testToken.balanceOf(accounts[1])).to.equal(0);
       expect(await testToken.balanceOf(accounts[2])).to.equal(TOTAL - AMOUNT2);
 
-      const finilizeData = web3.eth.abi.encodeParameters(
-        ["uint256", "uint", "address", "uint", "address"],
-        [executeMatchSelector, 31337, matchBook.address, 0, (await orderBook.orders(0)).account]
-      );
-      await matchBook.executeMatch(finilizeData, [
-        await web3.eth.sign(web3.utils.keccak256(finilizeData), accounts[0]),
-      ]);
+      await executeMatch(matchBook, 31337, 0, (await orderBook.orders(0)).account);
 
       expect(await realToken.balanceOf(accounts[1])).to.equal(TOTAL - AMOUNT);
       expect(await testToken.balanceOf(accounts[1])).to.equal(AMOUNT2);
@@ -108,37 +91,52 @@ describe("CrossBook", function () {
       expect(await testToken.balanceOf(accounts[2])).to.equal(TOTAL - AMOUNT2);
     });
     it("native coin scenario", async function () {
-      //await expect(orderBook.createOrder(NATIVE, AMOUNT, NATIVE, AMOUNT2, NETWORK, { from: accounts[1]})).to.be.revertedWith("");
       await orderBook.createOrder(NATIVE, AMOUNT, NATIVE, AMOUNT2, NETWORK, { from: accounts[1], value: AMOUNT });
 
-      const matchData = web3.eth.abi.encodeParameters(
-        ["uint256", "uint", "address", "uint", "address", "uint", "uint"],
-        [createMatchSelector, 31337, matchBook.address, 0, NATIVE, AMOUNT2, NETWORK]
-      );
-      await matchBook.createMatch(matchData, [await web3.eth.sign(web3.utils.keccak256(matchData), accounts[0])], {
+      await createMatch(matchBook, 31337, 0, NATIVE, AMOUNT2, NETWORK, {
         from: accounts[2],
         value: AMOUNT2,
       });
 
-      const executeData = web3.eth.abi.encodeParameters(
-        ["uint256", "uint", "address", "uint", "address", "address", "uint"],
-        [executeOrderSelector, 31337, orderBook.address, 0, (await matchBook.matches(0)).account, matchBook.address, 0]
-      );
       const before1 = await web3.eth.getBalance(accounts[2]);
-      await orderBook.executeOrder(executeData, [await web3.eth.sign(web3.utils.keccak256(executeData), accounts[0])]);
+      await executeOrder(orderBook, 31337, 0, (await matchBook.matches(0)).account, matchBook.address, 0);
       const after1 = new BigNumber(await web3.eth.getBalance(accounts[2]));
       expect(after1.minus(before1)).to.be.equal(AMOUNT);
 
-      const finilizeData = web3.eth.abi.encodeParameters(
-        ["uint256", "uint", "address", "uint", "address"],
-        [executeMatchSelector, 31337, matchBook.address, 0, (await orderBook.orders(0)).account]
-      );
       const before2 = await web3.eth.getBalance(accounts[1]);
-      await matchBook.executeMatch(finilizeData, [
-        await web3.eth.sign(web3.utils.keccak256(finilizeData), accounts[0]),
-      ]);
+      await executeMatch(matchBook, 31337, 0, (await orderBook.orders(0)).account);
       const after2 = new BigNumber(await web3.eth.getBalance(accounts[1]));
       expect(after2.minus(before2)).to.be.equal(AMOUNT2);
     });
   });
 });
+
+async function createMatch(book, chainid, orderId, tokenToSell, amountToSell, ordiginChainId, txOpts = {}) {
+  const data = web3.eth.abi.encodeParameters(
+    ["uint256", "uint", "address", "uint", "address", "uint", "uint"],
+    [createMatchSelector, chainid, book.address, orderId, tokenToSell, amountToSell, ordiginChainId]
+  );
+  const signers = await book.getSigners();
+  const signatures = await Promise.all(signers.map((s) => web3.eth.sign(web3.utils.keccak256(data), s)));
+  return await book.createMatch(data, signatures, txOpts);
+}
+
+async function executeMatch(book, chainid, matchId, receiver) {
+  const data = web3.eth.abi.encodeParameters(
+    ["uint256", "uint", "address", "uint", "address"],
+    [executeMatchSelector, chainid, book.address, matchId, receiver]
+  );
+  const signers = await book.getSigners();
+  const signatures = await Promise.all(signers.map((s) => web3.eth.sign(web3.utils.keccak256(data), s)));
+  return await book.executeMatch(data, signatures);
+}
+
+async function executeOrder(book, chainid, orderId, receiver, matchBookAddress, matchId) {
+  const data = web3.eth.abi.encodeParameters(
+    ["uint256", "uint", "address", "uint", "address", "address", "uint"],
+    [executeOrderSelector, chainid, book.address, orderId, receiver, matchBookAddress, matchId]
+  );
+  const signers = await book.getSigners();
+  const signatures = await Promise.all(signers.map((s) => web3.eth.sign(web3.utils.keccak256(data), s)));
+  return await book.executeOrder(data, signatures);
+}
