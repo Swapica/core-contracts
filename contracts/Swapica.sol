@@ -197,6 +197,7 @@ contract Swapica is UUPSUpgradeable, Signers {
     /// VIEW
     function getUserOrders(
         address user,
+        State state,
         uint256 begin,
         uint256 end
     ) external view returns (Order[] memory result) {
@@ -205,9 +206,19 @@ contract Swapica is UUPSUpgradeable, Signers {
         if (begin > ids.length) begin = ids.length;
         if (end > ids.length) end = ids.length;
         if (end <= begin) return result;
-        result = new Order[](end - begin);
-        for (uint256 i = 0; i < result.length; i++) {
-            result[i] = orders[ids[begin + i]];
+        uint count;
+        if (state == State.NONE) {
+            for (uint i = begin; i < end; i++) {
+                if (orderStatus[ids[i]].state == state) count++;
+            }
+        } else {
+            count = end - begin;
+        }
+        result = new Order[](count);
+        uint j;
+        for (uint i = begin; i < end; i++) {
+            if (state != State.NONE && orderStatus[ids[i]].state != state) continue;
+            result[j++] = orders[ids[i]];
         }
     }
 
@@ -217,6 +228,7 @@ contract Swapica is UUPSUpgradeable, Signers {
 
     function getUserMatches(
         address user,
+        State state,
         uint256 begin,
         uint256 end
     ) external view returns (Match[] memory result) {
@@ -225,9 +237,19 @@ contract Swapica is UUPSUpgradeable, Signers {
         if (begin > ids.length) begin = ids.length;
         if (end > ids.length) end = ids.length;
         if (end <= begin) return result;
-        result = new Match[](end - begin);
-        for (uint256 i = 0; i < result.length; i++) {
-            result[i] = matches[ids[begin + i]];
+        uint count;
+        if (state == State.NONE) {
+            for (uint i = begin; i < end; i++) {
+                if (matchStatus[ids[i]].state == state) count++;
+            }
+        } else {
+            count = end - begin;
+        }
+        result = new Match[](count);
+        uint j;
+        for (uint i = begin; i < end; i++) {
+            if (state != State.NONE && matchStatus[ids[i]].state != state) continue;
+            result[j++] = matches[ids[i]];
         }
     }
 
