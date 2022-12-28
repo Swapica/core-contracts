@@ -265,18 +265,8 @@ contract Swapica is UUPSUpgradeable, Signers {
         }
     }
 
-    function getActiveOrdersLength(
-        address tokenToSell,
-        address tokenToBuy
-    ) external view returns (uint count) {
-        Order[] storage ids = orders;
-        for (uint256 i = 0; i < orders.length; i++) {
-            State s = orderStatus[i].state;
-            if (tokenToSell != address(0) && ids[i].tokenToSell != tokenToSell) continue;
-            if (tokenToBuy != address(0) && ids[i].tokenToBuy != tokenToBuy) continue;
-            if (s == State.EXECUTED || s == State.CANCELED) continue;
-            count++;
-        }
+    function getOrdersLength() external view returns (uint) {
+        return orders.length;
     }
 
     /// FUNDS MANIPULATION
