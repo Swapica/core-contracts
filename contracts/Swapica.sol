@@ -207,7 +207,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         if (end > ids.length) end = ids.length;
         if (end <= begin) return result;
         uint count;
-        if (state == State.NONE) {
+        if (state != State.NONE) {
             for (uint i = begin; i < end; i++) {
                 if (orderStatus[ids[i]].state == state) count++;
             }
@@ -238,7 +238,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         if (end > ids.length) end = ids.length;
         if (end <= begin) return result;
         uint count;
-        if (state == State.NONE) {
+        if (state != State.NONE) {
             for (uint i = begin; i < end; i++) {
                 if (matchStatus[ids[i]].state == state) count++;
             }
