@@ -68,6 +68,14 @@ describe("CrossBook", function () {
       await orderBook.cancelOrder(0);
       expect(await realToken.balanceOf(accounts[0])).to.equal(TOTAL);
     });
+    it("should cancel match", async function () {
+      await orderBook.createOrder(realToken.address, AMOUNT, testToken.address, AMOUNT2, NETWORK);
+      await createMatch(matchBook, 31337, 0, testToken.address, AMOUNT2, NETWORK, { from: accounts[2] });
+      await cancelMatch(matchBook, 31337, 0, { from: accounts[2] });
+      expect(await testToken.balanceOf(accounts[2])).to.equal(TOTAL);
+      const s = await matchBook.matchStatus(0);
+      expect(s.state).to.equal(3);
+    });
   });
   describe("successful scenarios", function () {
     it("erc20 scenario", async function () {
@@ -129,6 +137,16 @@ async function executeMatch(book, chainid, matchId, receiver) {
   const signers = await book.getSigners();
   const signatures = await Promise.all(signers.map((s) => web3.eth.sign(web3.utils.keccak256(data), s)));
   return await book.executeMatch(data, signatures);
+}
+
+async function cancelMatch(book, chainid, matchId, txOpts = {}) {
+  const data = web3.eth.abi.encodeParameters(
+    ["uint256", "uint", "address", "uint"],
+    [cancelMatchSelector, chainid, book.address, matchId]
+  );
+  const signers = await book.getSigners();
+  const signatures = await Promise.all(signers.map((s) => web3.eth.sign(web3.utils.keccak256(data), s)));
+  return await book.cancelMatch(data, signatures, txOpts);
 }
 
 async function executeOrder(book, chainid, orderId, receiver, matchBookAddress, matchId) {
