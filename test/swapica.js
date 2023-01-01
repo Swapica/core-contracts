@@ -67,6 +67,8 @@ describe("CrossBook", function () {
       expect(await realToken.balanceOf(accounts[0])).to.equal(TOTAL - AMOUNT);
       await orderBook.cancelOrder(0);
       expect(await realToken.balanceOf(accounts[0])).to.equal(TOTAL);
+      const s = await orderBook.orderStatus(0);
+      expect(s.state).to.equal(3);
     });
     it("should cancel match", async function () {
       await orderBook.createOrder(realToken.address, AMOUNT, testToken.address, AMOUNT2, NETWORK);
