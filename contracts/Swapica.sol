@@ -291,6 +291,10 @@ contract Swapica is UUPSUpgradeable, Signers {
         return orders.length;
     }
 
+    function getMatchesLength() external view returns (uint) {
+        return matches.length;
+    }
+
     /// FUNDS MANIPULATION
 
     function _lock(address coin, address account, uint256 amount) internal {

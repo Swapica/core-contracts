@@ -22,7 +22,7 @@ describe("CrossBook", function () {
   const TOTAL = 100_000;
   const AMOUNT = 123;
   const AMOUNT2 = 12;
-  const NETWORK = 1;
+  const NETWORK = 31337;
 
   before("Deployment", async function () {
     accounts = await web3.eth.getAccounts();
@@ -35,10 +35,16 @@ describe("CrossBook", function () {
     testToken = await Token.new("TestToken", "TTKN", 27);
     await realToken.mint(accounts[0], TOTAL);
     await realToken.increaseAllowance(orderBook.address, TOTAL);
+    await testToken.mint(accounts[0], TOTAL);
+    await testToken.increaseAllowance(matchBook.address, TOTAL);
 
     await realToken.mint(accounts[1], TOTAL);
     await realToken.increaseAllowance(orderBook.address, TOTAL, { from: accounts[1] });
+    await testToken.mint(accounts[1], TOTAL);
+    await testToken.increaseAllowance(matchBook.address, TOTAL, { from: accounts[1] });
 
+    await realToken.mint(accounts[2], TOTAL);
+    await realToken.increaseAllowance(realToken.address, TOTAL, { from: accounts[2] });
     await testToken.mint(accounts[2], TOTAL);
     await testToken.increaseAllowance(matchBook.address, TOTAL, { from: accounts[2] });
     await reverter.snapshot();
@@ -89,15 +95,15 @@ describe("CrossBook", function () {
 
       await executeOrder(orderBook, 31337, 0, (await matchBook.matches(0)).account, matchBook.address, 0);
       expect(await realToken.balanceOf(accounts[1])).to.equal(TOTAL - AMOUNT);
-      expect(await realToken.balanceOf(accounts[2])).to.equal(AMOUNT);
-      expect(await testToken.balanceOf(accounts[1])).to.equal(0);
+      expect(await realToken.balanceOf(accounts[2])).to.equal(TOTAL + AMOUNT);
+      expect(await testToken.balanceOf(accounts[1])).to.equal(TOTAL);
       expect(await testToken.balanceOf(accounts[2])).to.equal(TOTAL - AMOUNT2);
 
       await executeMatch(matchBook, 31337, 0, (await orderBook.orders(0)).account);
 
       expect(await realToken.balanceOf(accounts[1])).to.equal(TOTAL - AMOUNT);
-      expect(await testToken.balanceOf(accounts[1])).to.equal(AMOUNT2);
-      expect(await realToken.balanceOf(accounts[2])).to.equal(AMOUNT);
+      expect(await testToken.balanceOf(accounts[1])).to.equal(TOTAL + AMOUNT2);
+      expect(await realToken.balanceOf(accounts[2])).to.equal(TOTAL + AMOUNT);
       expect(await testToken.balanceOf(accounts[2])).to.equal(TOTAL - AMOUNT2);
     });
     it("native coin scenario", async function () {
@@ -119,6 +125,94 @@ describe("CrossBook", function () {
       expect(after2.minus(before2)).to.be.equal(AMOUNT2);
     });
   });
+  describe("view functions", function () {
+    it("order len", async function () {
+      await create(1);
+      expect(await orderBook.getOrdersLength()).to.be.equal(1);
+      expect(await matchBook.getMatchesLength()).to.be.equal(0);
+      expect(await matchBook.getUserMatchesLength(accounts[0])).to.be.equal(0);
+
+      await create(6);
+      expect(await orderBook.getOrdersLength()).to.be.equal(2);
+      expect(await matchBook.getMatchesLength()).to.be.equal(1);
+      expect(await orderBook.getUserOrdersLength(accounts[0])).to.be.equal(2);
+      expect(await matchBook.getUserMatchesLength(accounts[0])).to.be.equal(1);
+
+      await create(2);
+      expect(await orderBook.getOrdersLength()).to.be.equal(3);
+      expect(await matchBook.getMatchesLength()).to.be.equal(2);
+      expect(await orderBook.getUserOrdersLength(accounts[0])).to.be.equal(3);
+      expect(await matchBook.getUserMatchesLength(accounts[0])).to.be.equal(2);
+
+      await create(2, accounts[1]);
+      expect(await orderBook.getOrdersLength()).to.be.equal(4);
+      expect(await matchBook.getMatchesLength()).to.be.equal(3);
+      expect(await orderBook.getUserOrdersLength(accounts[1])).to.be.equal(1);
+      expect(await matchBook.getUserMatchesLength(accounts[1])).to.be.equal(1);
+    });
+    it("get active orders", async function () {
+      let orders;
+      orders = await orderBook.getActiveOrders(realToken.address, testToken.address, 0, 100);
+      expect(orders).to.deep.equal([]);
+      await create(1);
+      orders = await orderBook.getActiveOrders(realToken.address, testToken.address, 0, 100);
+      expect(orders.length).to.be.equal(1);
+      expect(orders[0].id).to.be.equal("0");
+      await create(4);
+      orders = await orderBook.getActiveOrders(realToken.address, testToken.address, 0, 100);
+      expect(orders.length).to.be.equal(1);
+      await create(5);
+      orders = await orderBook.getActiveOrders(realToken.address, testToken.address, 0, 100);
+      expect(orders.length).to.be.equal(1);
+      await create(6);
+      orders = await orderBook.getActiveOrders(realToken.address, testToken.address, 0, 100);
+      expect(orders.length).to.be.equal(2);
+      expect(orders[1].id).to.be.equal("3");
+    });
+    it("get order's status", async function () {
+      let state;
+
+      await create(1);
+      state = (await orderBook.orderStatus(0)).state;
+      expect(state).to.be.equal(1);
+    });
+  });
+  async function create(type, from = accounts[0]) {
+    ///  0 - none
+    ///  1 - waiting mathcing
+    ///  2 - waiting order execution
+    ///  3 - waiting match execution
+    ///  4 - executed
+    ///  5 - cancelled order
+    ///  6 - cancelled match
+    let tx;
+    let orderId = 0;
+    let matchId = 0;
+
+    if (type >= 1) {
+      tx = await orderBook.createOrder(realToken.address, AMOUNT, testToken.address, AMOUNT2, NETWORK, { from });
+      orderId = tx.receipt.logs.find((_) => _.event == "OrderUpdated").args.id;
+    }
+    if (type == 5) {
+      await orderBook.cancelOrder(orderId, { from });
+      return;
+    }
+    if (type >= 2) {
+      tx = await createMatch(matchBook, 31337, orderId, testToken.address, AMOUNT2, NETWORK, { from });
+      matchId = tx.receipt.logs.find((_) => _.event == "MatchUpdated").args.id;
+    }
+    if (type == 6) {
+      await cancelMatch(matchBook, 31337, matchId, { from });
+      return;
+    }
+    if (type >= 3) {
+      await executeOrder(orderBook, 31337, orderId, from, matchBook.address, matchId);
+    }
+    if (type >= 4) {
+      await executeMatch(matchBook, 31337, matchId, (await orderBook.orders(0)).account);
+    }
+    return [orderId, matchId];
+  }
 });
 
 async function createMatch(book, chainid, orderId, tokenToSell, amountToSell, ordiginChainId, txOpts = {}) {
