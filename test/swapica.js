@@ -266,6 +266,11 @@ describe("CrossBook", function () {
       expect(info.length).to.be.equal(1);
       expect(info.at(-1).id).to.be.equal("2");
     });
+    it("locked", async function () {
+      await create(2);
+      expect(await orderBook.locked(accounts[0], realToken.address)).to.be.equal(AMOUNT);
+      expect(await matchBook.locked(accounts[0], testToken.address)).to.be.equal(AMOUNT2);
+    });
   });
   async function create(type, from = accounts[0]) {
     ///  0 - none
