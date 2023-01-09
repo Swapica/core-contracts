@@ -306,8 +306,6 @@ contract Swapica is UUPSUpgradeable, Signers {
         }
     }
 
-    event Called();
-
     function _release(address coin, address account, address to, uint256 amount) internal {
         locked[account][coin] -= amount;
         if (NATIVE == coin) {

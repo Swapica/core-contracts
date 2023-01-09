@@ -10,6 +10,15 @@ const executeOrderSelector = 0;
 const executeMatchSelector = 1;
 const createMatchSelector = 2;
 const cancelMatchSelector = 3;
+
+const State = {
+  NONE: 0,
+  AWAITING_MATCH: 1,
+  AWAITING_FINALIZATION: 2,
+  CANCELED: 3,
+  EXECUTED: 4,
+};
+
 describe("CrossBook", function () {
   let orderBook;
   let matchBook;
@@ -124,6 +133,24 @@ describe("CrossBook", function () {
       const after2 = new BigNumber(await web3.eth.getBalance(accounts[1]));
       expect(after2.minus(before2)).to.be.equal(AMOUNT2);
     });
+    it("erc20 scenario + signers functionality", async function () {
+      expect(await orderBook.getSigners()).to.deep.equal([accounts[0]]);
+      await orderBook.addSigners([accounts[1], accounts[2]]);
+      expect(await orderBook.getSigners()).to.deep.equal([accounts[0], accounts[1], accounts[2]]);
+      expect(await orderBook.removeSigners([accounts[0]]));
+      expect(await orderBook.getSigners()).to.deep.equal([accounts[2], accounts[1]]);
+      await orderBook.createOrder(realToken.address, AMOUNT, testToken.address, AMOUNT2, NETWORK, {
+        from: accounts[1],
+      });
+
+      await createMatch(matchBook, 31337, 0, testToken.address, AMOUNT2, NETWORK, { from: accounts[2] });
+
+      await executeOrder(orderBook, 31337, 0, (await matchBook.matches(0)).account, matchBook.address, 0);
+      expect(await realToken.balanceOf(accounts[2])).to.equal(TOTAL + AMOUNT);
+
+      await executeMatch(matchBook, 31337, 0, (await orderBook.orders(0)).account);
+      expect(await testToken.balanceOf(accounts[1])).to.equal(TOTAL + AMOUNT2);
+    });
   });
   describe("view functions", function () {
     it("order len", async function () {
@@ -172,9 +199,72 @@ describe("CrossBook", function () {
     it("get order's status", async function () {
       let state;
 
-      await create(1);
+      await create(2);
       state = (await orderBook.orderStatus(0)).state;
-      expect(state).to.be.equal(1);
+      expect(state).to.be.equal(State.AWAITING_MATCH);
+      state = (await matchBook.matchStatus(0)).state;
+      expect(state).to.be.equal(State.AWAITING_FINALIZATION);
+
+      await create(3);
+      state = (await orderBook.orderStatus(1)).state;
+      expect(state).to.be.equal(State.EXECUTED);
+      state = (await matchBook.matchStatus(1)).state;
+      expect(state).to.be.equal(State.AWAITING_FINALIZATION);
+
+      await create(4);
+      state = (await orderBook.orderStatus(2)).state;
+      expect(state).to.be.equal(State.EXECUTED);
+      state = (await matchBook.matchStatus(2)).state;
+      expect(state).to.be.equal(State.EXECUTED);
+
+      await create(6);
+      state = (await orderBook.orderStatus(3)).state;
+      expect(state).to.be.equal(State.AWAITING_MATCH);
+      state = (await matchBook.matchStatus(3)).state;
+      expect(state).to.be.equal(State.CANCELED);
+
+      await create(1);
+      state = (await orderBook.orderStatus(4)).state;
+      expect(state).to.be.equal(State.AWAITING_MATCH);
+      await create(5);
+      state = (await orderBook.orderStatus(5)).state;
+      expect(state).to.be.equal(State.CANCELED);
+    });
+    it("user's orders and matches", async function () {
+      let info;
+      info = await orderBook.getUserOrders(accounts[0], State.NONE, 0, 100);
+      expect(info.length).to.be.equal(await orderBook.getUserOrdersLength(accounts[0]));
+      info = await matchBook.getUserMatches(accounts[0], State.NONE, 0, 100);
+      expect(info.length).to.be.equal(await matchBook.getUserMatchesLength(accounts[0]));
+
+      await create(4);
+      info = await orderBook.getUserOrders(accounts[0], State.NONE, 0, 100);
+      expect(info.length).to.be.equal(await orderBook.getUserOrdersLength(accounts[0]));
+      expect(info.at(-1).account).to.be.equal(accounts[0]);
+      expect(info.at(-1).id).to.be.equal("0");
+      info = await matchBook.getUserMatches(accounts[0], State.NONE, 0, 100);
+      expect(info.length).to.be.equal(1);
+      expect(info.at(-1).account).to.be.equal(accounts[0]);
+      expect(info.at(-1).id).to.be.equal("0");
+      info = await orderBook.getUserOrders(accounts[0], State.CANCELED, 0, 100);
+      expect(info.length).to.be.equal(0);
+      info = await matchBook.getUserMatches(accounts[0], State.CANCELED, 0, 100);
+      expect(info.length).to.be.equal(0);
+
+      await create(5);
+      info = await orderBook.getUserOrders(accounts[0], State.CANCELED, 0, 100);
+      expect(info.length).to.be.equal(1);
+      expect(info.at(-1).account).to.be.equal(accounts[0]);
+      expect(info.at(-1).id).to.be.equal("1");
+
+      await create(1);
+      info = await orderBook.getUserOrders(accounts[0], State.NONE, 0, 100);
+      expect(info.length).to.be.equal(3);
+      expect(info.at(-1).id).to.be.equal("2");
+
+      info = await orderBook.getUserOrders(accounts[0], State.AWAITING_MATCH, 0, 100);
+      expect(info.length).to.be.equal(1);
+      expect(info.at(-1).id).to.be.equal("2");
     });
   });
   async function create(type, from = accounts[0]) {
