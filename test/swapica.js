@@ -157,8 +157,37 @@ describe("CrossBook", function () {
       await executeMatch(matchBook, 31337, 0, (await orderBook.orders(0)).account);
       expect(await testToken.balanceOf(accounts[1])).to.equal(TOTAL + AMOUNT2);
     });
+    it("erc20 scenario + state checking", async function () {
+      await orderBook.createOrder(realToken.address, AMOUNT, testToken.address, AMOUNT2, NETWORK, {
+        from: accounts[1],
+      });
+
+      await createMatch(matchBook, 31337, 0, testToken.address, AMOUNT2, NETWORK, { from: accounts[2] });
+
+      await executeOrder(orderBook, 31337, 0, (await matchBook.matches(0)).account, matchBook.address, 0);
+      await reverts(
+        executeOrder(orderBook, 31337, 0, (await matchBook.matches(0)).account, matchBook.address, 0),
+        "Order status is wrong"
+      );
+      await reverts(orderBook.cancelOrder(0, { from: accounts[1] }), "Order status is wrong");
+      expect(await realToken.balanceOf(accounts[2])).to.equal(TOTAL + AMOUNT);
+
+      await executeMatch(matchBook, 31337, 0, (await orderBook.orders(0)).account);
+      await reverts(executeMatch(matchBook, 31337, 0, (await orderBook.orders(0)).account), "Order status is wrong");
+      await reverts(cancelMatch(matchBook, 31337, 0, { from: accounts[2] }), "Order status is wrong");
+      expect(await testToken.balanceOf(accounts[1])).to.equal(TOTAL + AMOUNT2);
+    });
   });
   describe("Signatures", function () {
+    it("wrong signers", async function () {
+      const data = web3.eth.abi.encodeParameters(
+        ["uint256", "uint", "address", "uint", "address", "uint", "uint"],
+        [executeOrderSelector, 31337, matchBook.address, 0, testToken.address, 1, 31337]
+      );
+      const signers = accounts;
+      const signatures = await Promise.all(signers.map((s) => web3.eth.sign(web3.utils.keccak256(data), s)));
+      await reverts(matchBook.createMatch(data, signatures), "Signers: invalid signer");
+    });
     it("wrong selector for createMatch", async function () {
       await orderBook.createOrder(realToken.address, AMOUNT, testToken.address, AMOUNT2, NETWORK, {
         from: accounts[1],

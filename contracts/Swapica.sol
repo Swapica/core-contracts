@@ -118,7 +118,7 @@ contract Swapica is UUPSUpgradeable, Signers {
                 (Selector, uint256, address, uint256, address, address, uint256)
             );
         require(selector == Selector.EXECUTE_ORDER, "Wrong Selector");
-        require(orderStatus[id].state == State.AWAITING_MATCH);
+        require(orderStatus[id].state == State.AWAITING_MATCH, "Order status is wrong");
         _checkSignatureRecipient(chainid, swapica);
 
         Order storage order = orders[id];
