@@ -100,7 +100,7 @@ describe("CrossBook", function () {
       expect(s.state).to.equal(3);
     });
   });
-  describe("successful scenarios", function () {
+  describe("scenarios", function () {
     it("erc20 scenario", async function () {
       await orderBook.createOrder(realToken.address, AMOUNT, testToken.address, AMOUNT2, NETWORK, {
         from: accounts[1],
