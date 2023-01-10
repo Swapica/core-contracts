@@ -2,7 +2,7 @@ const { excpect } = require("chai");
 const hardhat = require("hardhat");
 const Reverter = require("./helpers/reverter.js");
 const { BigNumber } = require("bignumber.js");
-
+const { reverts } = require("truffle-assertions");
 const Book = artifacts.require("Swapica");
 const Token = artifacts.require("ERC20Mock");
 
@@ -85,6 +85,12 @@ describe("CrossBook", function () {
       const s = await orderBook.orderStatus(0);
       expect(s.state).to.equal(3);
     });
+    it("cancel reverts", async function () {
+      await orderBook.createOrder(realToken.address, AMOUNT, testToken.address, AMOUNT2, NETWORK);
+      await createMatch(matchBook, 31337, 0, testToken.address, AMOUNT2, NETWORK, { from: accounts[2] });
+      await reverts(cancelMatch(matchBook, 31337, 0, { from: accounts[1] }, "You're not creator of order"));
+      await reverts(orderBook.cancelOrder(0, { from: accounts[1] }), "You're not creator of order");
+    });
     it("should cancel match", async function () {
       await orderBook.createOrder(realToken.address, AMOUNT, testToken.address, AMOUNT2, NETWORK);
       await createMatch(matchBook, 31337, 0, testToken.address, AMOUNT2, NETWORK, { from: accounts[2] });
@@ -150,6 +156,35 @@ describe("CrossBook", function () {
 
       await executeMatch(matchBook, 31337, 0, (await orderBook.orders(0)).account);
       expect(await testToken.balanceOf(accounts[1])).to.equal(TOTAL + AMOUNT2);
+    });
+  });
+  describe("Signatures", function () {
+    it("wrong selector for createMatch", async function () {
+      await orderBook.createOrder(realToken.address, AMOUNT, testToken.address, AMOUNT2, NETWORK, {
+        from: accounts[1],
+      });
+
+      const data = web3.eth.abi.encodeParameters(
+        ["uint256", "uint", "address", "uint", "address", "uint", "uint"],
+        [executeOrderSelector, 31337, matchBook.address, 0, testToken.address, 1, 31337]
+      );
+      const signers = await matchBook.getSigners();
+      const signatures = await Promise.all(signers.map((s) => web3.eth.sign(web3.utils.keccak256(data), s)));
+      await reverts(matchBook.createMatch(data, signatures), "Wrong Selector");
+      await createMatch(matchBook, 31337, 0, testToken.address, AMOUNT2, NETWORK, { from: accounts[2] });
+    });
+    it("wrong selector for executeOrder", async function () {
+      await orderBook.createOrder(realToken.address, AMOUNT, testToken.address, AMOUNT2, NETWORK, {
+        from: accounts[1],
+      });
+      await createMatch(matchBook, 31337, 0, testToken.address, AMOUNT2, NETWORK, { from: accounts[2] });
+      const data = web3.eth.abi.encodeParameters(
+        ["uint256", "uint", "address", "uint", "address"],
+        [createMatchSelector, 31337, orderBook.address, 0, accounts[0]]
+      );
+      const signers = await orderBook.getSigners();
+      const signatures = await Promise.all(signers.map((s) => web3.eth.sign(web3.utils.keccak256(data), s)));
+      await reverts(orderBook.executeMatch(data, signatures), "Wrong Selector");
     });
   });
   describe("view functions", function () {

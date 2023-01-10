@@ -95,7 +95,7 @@ contract Swapica is UUPSUpgradeable, Signers {
     function cancelOrder(uint256 id) external {
         Order storage order = orders[id];
         require(orderStatus[id].state == State.AWAITING_MATCH, "Order status is wrong");
-        require(order.account == msg.sender);
+        require(order.account == msg.sender, "You're not creator of order");
         orderStatus[id].state = State.CANCELED;
         emit OrderUpdated(id, orderStatus[id]);
         _release(order.tokenToSell, order.account, order.account, order.amountToSell);
@@ -172,7 +172,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         require(matchStatus[id].state == State.AWAITING_FINALIZATION, "Order status is wrong");
 
         Match storage order = matches[id];
-        require(order.account == msg.sender);
+        require(order.account == msg.sender, "You're not creator of order");
         matchStatus[id].state = State.CANCELED;
         emit MatchUpdated(id, matchStatus[id]);
         _release(order.tokenToSell, order.account, order.account, order.amountToSell);
