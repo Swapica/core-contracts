@@ -177,6 +177,26 @@ describe("CrossBook", function () {
       await reverts(cancelMatch(matchBook, 31337, 0, { from: accounts[2] }), "Order status is wrong");
       expect(await testToken.balanceOf(accounts[1])).to.equal(TOTAL + AMOUNT2);
     });
+    it("erc20 scenario + not enough money", async function () {
+      await reverts(
+        orderBook.createOrder(realToken.address, TOTAL + 1, testToken.address, TOTAL + 1, NETWORK, {
+          from: accounts[1],
+        }),
+        "ERC20"
+      );
+
+      await reverts(
+        createMatch(matchBook, 31337, 0, testToken.address, TOTAL + 1, NETWORK, { from: accounts[2] }),
+        "ERC20"
+      );
+    });
+    it("native scenario + not enough money", async function () {
+      // await reverts(orderBook.createOrder(NATIVE, AMOUNT, NATIVE, AMOUNT2, NETWORK, { from: accounts[1], value: AMOUNT-1 }), "Value is not equal to amount");
+      // await reverts(createMatch(matchBook, 31337, 0, NATIVE, AMOUNT2, NETWORK, {
+      //   from: accounts[2],
+      //   value: AMOUNT2-1,
+      // }), "Value is not equal to amount");
+    });
   });
   describe("Signatures", function () {
     it("wrong signers", async function () {
