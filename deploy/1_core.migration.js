@@ -1,22 +1,16 @@
-const ERC1967Proxy = artifacts.require('ERC1967Proxy');
-const Swapica = artifacts.require('Swapica');
-
-const {logTransaction, logContracts} = require('@dlsl/hardhat-migrate');
+// Include following line to get access to the ERC1967Proxy artifact.
+// import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+const ERC1967Proxy = artifacts.require("ERC1967Proxy");
+const Swapica = artifacts.require("Swapica");
 
 // TODO: change signer addresses
-const signers = ['0xc3E589056Ece16BCB88c6f9318e9a7343b663522'];
+const signers = ["0xE461aa915538B81BA17995DF5FEDB96640f10BDE"];
 
-module.exports = async (deployer) => {
+module.exports = async (deployer, logger) => {
   const swapica = await deployer.deploy(Swapica);
-  const proxyS = await deployer.deploy(ERC1967Proxy, swapica.address, '0x');
+  const proxyS = await deployer.deploy(ERC1967Proxy, swapica.address, "0x");
 
-  logTransaction(
-    await (await Swapica.at(proxyS.address)).__Swapica_init(signers),
-    'Initialize Swapica',
-  );
+  logger.logTransaction(await (await Swapica.at(proxyS.address)).__Swapica_init(signers), "Initialize Swapica");
 
-  logContracts(
-    ['Swapica implementation', swapica.address],
-    ['Swapica proxy', proxyS.address],
-  );
+  logger.logContracts(["Swapica implementation", swapica.address], ["Swapica proxy", proxyS.address]);
 };
