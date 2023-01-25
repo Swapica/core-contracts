@@ -95,7 +95,7 @@ contract Swapica is UUPSUpgradeable, Signers {
     function cancelOrder(uint256 id) external {
         Order storage order = orders[id];
         require(orderStatus[id].state == State.AWAITING_MATCH, "Order status is wrong");
-        require(order.account == msg.sender);
+        require(order.account == msg.sender, "You're not creator of order");
         orderStatus[id].state = State.CANCELED;
         emit OrderUpdated(id, orderStatus[id]);
         _release(order.tokenToSell, order.account, order.account, order.amountToSell);
@@ -118,7 +118,7 @@ contract Swapica is UUPSUpgradeable, Signers {
                 (Selector, uint256, address, uint256, address, address, uint256)
             );
         require(selector == Selector.EXECUTE_ORDER, "Wrong Selector");
-        require(orderStatus[id].state == State.AWAITING_MATCH);
+        require(orderStatus[id].state == State.AWAITING_MATCH, "Order status is wrong");
         _checkSignatureRecipient(chainid, swapica);
 
         Order storage order = orders[id];
@@ -172,7 +172,7 @@ contract Swapica is UUPSUpgradeable, Signers {
         require(matchStatus[id].state == State.AWAITING_FINALIZATION, "Order status is wrong");
 
         Match storage order = matches[id];
-        require(order.account == msg.sender);
+        require(order.account == msg.sender, "You're not creator of order");
         matchStatus[id].state = State.CANCELED;
         emit MatchUpdated(id, matchStatus[id]);
         _release(order.tokenToSell, order.account, order.account, order.amountToSell);
@@ -289,6 +289,10 @@ contract Swapica is UUPSUpgradeable, Signers {
 
     function getOrdersLength() external view returns (uint) {
         return orders.length;
+    }
+
+    function getMatchesLength() external view returns (uint) {
+        return matches.length;
     }
 
     /// FUNDS MANIPULATION
