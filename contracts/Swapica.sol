@@ -7,8 +7,8 @@ import "./Signers.sol";
 contract Swapica is UUPSUpgradeable, Signers {
     address public constant NATIVE = address(0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE);
 
-    event OrderUpdated(uint256 indexed id, Status indexed status);
-    event MatchUpdated(uint256 indexed id, Status indexed status);
+    event OrderUpdated(uint256 indexed id, Status status);
+    event MatchUpdated(uint256 indexed id, Status status);
 
     struct Order {
         uint256 id;
