@@ -67,7 +67,7 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
     }
 
     function cancelOrder(uint256 orderId) external {
-        Order storage order = orders[orderId];
+        Order storage order = orders[orderId - 1];
 
         address orderCreator = order.creator;
 
