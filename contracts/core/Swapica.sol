@@ -171,7 +171,7 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
 
         Match storage match_ = matches[matchId - 1];
 
-        require(selector == Selector.CANCEL_MATCH, "Swapica: Wrong Selector");
+        require(selector == Selector.CANCEL_MATCH, "Swapica: Wrong selector");
         require(match_.state == State.AWAITING_FINALIZATION, "Swapica: Match state is wrong");
         require(match_.creator == msg.sender, "Swapica: You're not a creator of the match");
 
@@ -187,7 +187,28 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
     function executeMatch(
         bytes calldata orderData,
         bytes[] calldata signatures
-    ) external override checkSignature(orderData, signatures) {}
+    ) external override checkSignature(orderData, signatures) {
+        (
+            Selector selector,
+            uint256 chainid,
+            address matchSwapica,
+            uint256 matchId,
+            address receiver
+        ) = abi.decode(orderData, (Selector, uint256, address, uint256, address));
+
+        Match storage match_ = matches[matchId - 1];
+
+        require(selector == Selector.EXECUTE_MATCH, "Swapica: Wrong selector");
+        require(match_.state == State.AWAITING_FINALIZATION, "Swapica: Wrong match status");
+
+        _checkSignatureRecipient(chainid, matchSwapica);
+
+        match_.state = State.EXECUTED;
+
+        _release(match_.tokenToSell, match_.creator, receiver, match_.amountToSell);
+
+        emit MatchUpdated(matchId, State.EXECUTED);
+    }
 
     function getUserOrders(
         address user,
