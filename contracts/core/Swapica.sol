@@ -44,7 +44,7 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
         OrderStatus memory status;
         status.state = State.AWAITING_MATCH;
 
-        uint256 orderId = orders.length;
+        uint256 orderId = orders.length + 1;
 
         orders.push(
             Order({
@@ -139,7 +139,7 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
 
         _checkSignatureRecipient(chainId, matchSwapica);
 
-        uint256 matchId = matches.length;
+        uint256 matchId = matches.length + 1;
 
         matches.push(
             Match({
