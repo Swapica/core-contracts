@@ -19,6 +19,7 @@ interface ISwapica {
 
     struct Order {
         OrderStatus status;
+        uint256 orderId;
         address creator;
         address tokenToSell;
         uint256 amountToSell;

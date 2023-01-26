@@ -22,8 +22,8 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
 
     mapping(address => User) internal _userInfos;
 
-    event OrderUpdated(uint256 indexed id, OrderStatus status);
-    event MatchUpdated(uint256 indexed id, State status);
+    event OrderUpdated(uint256 indexed orderId, OrderStatus status);
+    event MatchUpdated(uint256 indexed matchId, State status);
 
     modifier checkSignature(bytes calldata orderData, bytes[] calldata signatures) {
         _checkSignatures(keccak256(orderData), signatures);
@@ -44,9 +44,12 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
         OrderStatus memory status;
         status.state = State.AWAITING_MATCH;
 
+        uint256 orderId = orders.length;
+
         orders.push(
             Order({
                 status: status,
+                orderId: orderId,
                 creator: msg.sender,
                 tokenToSell: tokenToSell,
                 amountToSell: amountToSell,
@@ -56,13 +59,11 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
             })
         );
 
-        uint256 currentOrderId = orders.length;
-
-        _userInfos[msg.sender].orderIds.push(currentOrderId - 1);
+        _userInfos[msg.sender].orderIds.push(orderId - 1);
 
         _lock(tokenToSell, msg.sender, amountToSell);
 
-        emit OrderUpdated(currentOrderId, status);
+        emit OrderUpdated(orderId, status);
     }
 
     function cancelOrder(uint256 orderId) external {
@@ -120,7 +121,44 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
     function createMatch(
         bytes calldata orderData,
         bytes[] calldata signatures
-    ) external payable override checkSignature(orderData, signatures) {}
+    ) external payable override checkSignature(orderData, signatures) {
+        (
+            Selector selector,
+            uint256 chainId,
+            address matchSwapica,
+            uint256 orderId,
+            address tokenToSell,
+            uint256 amountToSell,
+            uint256 originChain
+        ) = abi.decode(
+                orderData,
+                (Selector, uint256, address, uint256, address, uint256, uint256)
+            );
+
+        require(selector == Selector.CREATE_MATCH, "Swapica: Wrong selector");
+
+        _checkSignatureRecipient(chainId, matchSwapica);
+
+        uint256 matchId = matches.length;
+
+        matches.push(
+            Match({
+                state: State.AWAITING_FINALIZATION,
+                matchId: matchId,
+                originOrderId: orderId,
+                creator: msg.sender,
+                tokenToSell: tokenToSell,
+                amountToSell: amountToSell,
+                originChainId: originChain
+            })
+        );
+
+        _userInfos[msg.sender].matchIds.push(matchId - 1);
+
+        _lock(tokenToSell, msg.sender, amountToSell);
+
+        emit MatchUpdated(matchId, State.AWAITING_FINALIZATION);
+    }
 
     function cancelMatch(
         bytes calldata orderData,
