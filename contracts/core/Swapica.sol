@@ -3,6 +3,9 @@ pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
+
+import "@dlsl/dev-modules/libs/arrays/Paginator.sol";
 
 import "../interfaces/core/ISwapica.sol";
 
@@ -10,6 +13,9 @@ import "./Globals.sol";
 import "../multisig/Signers.sol";
 
 contract Swapica is ISwapica, UUPSUpgradeable, Signers {
+    using Paginator for uint256[];
+    using Math for uint256;
+
     Order[] public orders;
     Match[] public matches;
 
@@ -58,37 +64,56 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
     ) external override checkSignature(orderData, signatures) {}
 
     function getUserOrders(
-        uint256 limit,
-        uint256 offset
-    ) external view override returns (Order[] memory orders) {
-        return new Order[](0);
+        address user,
+        uint256 offset,
+        uint256 limit
+    ) external view override returns (Order[] memory userOrders) {
+        uint256[] memory orderIds = _userInfos[user].orderIds.part(offset, limit);
+
+        userOrders = new Order[](orderIds.length);
+
+        for (uint256 i; i < userOrders.length; i++) {
+            userOrders[i] = orders[orderIds[i]];
+        }
     }
 
     function getUserMatches(
         address user,
-        uint256 limit,
-        uint256 offset
-    ) external view override returns (Match[] memory matches) {
-        return new Match[](0);
+        uint256 offset,
+        uint256 limit
+    ) external view override returns (Match[] memory userMatches) {
+        uint256[] memory matchIds = _userInfos[user].matchIds.part(offset, limit);
+
+        userMatches = new Match[](matchIds.length);
+
+        for (uint256 i; i < userMatches.length; i++) {
+            userMatches[i] = matches[matchIds[i]];
+        }
     }
 
     function getAllOrders(
-        uint256 limit,
-        uint256 offset
-    ) external view override returns (Order[] memory orders) {
-        return new Order[](0);
+        uint256 offset,
+        uint256 limit
+    ) external view override returns (Order[] memory allOrders) {
+        uint256 to = (offset + limit).min(orders.length).max(offset);
+
+        allOrders = new Order[](to - offset);
+
+        for (uint256 i = offset; i < to; i++) {
+            allOrders[i - offset] = orders[i];
+        }
     }
 
     function getUserOrdersLength(address user) external view override returns (uint256) {
-        return 0;
+        return _userInfos[user].orderIds.length;
     }
 
-    function getUserMatchesLength() external view override returns (uint256) {
-        return 0;
+    function getUserMatchesLength(address user) external view override returns (uint256) {
+        return _userInfos[user].matchIds.length;
     }
 
     function getAllOrdersLength() external view override returns (uint256) {
-        return 0;
+        return orders.length;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}

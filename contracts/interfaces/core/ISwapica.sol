@@ -69,24 +69,25 @@ interface ISwapica {
     function executeMatch(bytes calldata orderData, bytes[] calldata signatures) external;
 
     function getUserOrders(
-        uint256 limit,
-        uint256 offset
-    ) external view returns (Order[] memory orders);
+        address user,
+        uint256 offset,
+        uint256 limit
+    ) external view returns (Order[] memory userOrders);
 
     function getUserMatches(
         address user,
-        uint256 limit,
-        uint256 offset
-    ) external view returns (Match[] memory matches);
+        uint256 offset,
+        uint256 limit
+    ) external view returns (Match[] memory userMatches);
 
     function getAllOrders(
-        uint256 limit,
-        uint256 offset
-    ) external view returns (Order[] memory orders);
+        uint256 offset,
+        uint256 limit
+    ) external view returns (Order[] memory allOrders);
 
     function getUserOrdersLength(address user) external view returns (uint256);
 
-    function getUserMatchesLength() external view returns (uint256);
+    function getUserMatchesLength(address user) external view returns (uint256);
 
     function getAllOrdersLength() external view returns (uint256);
 }
