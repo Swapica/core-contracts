@@ -34,22 +34,22 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
     function executeOrder(
         bytes calldata orderData,
         bytes[] calldata signatures
-    ) external override {}
+    ) external override checkSignature(orderData, signatures) {}
 
     function createMatch(
         bytes calldata orderData,
         bytes[] calldata signatures
-    ) external payable override {}
+    ) external payable override checkSignature(orderData, signatures) {}
 
     function cancelMatch(
         bytes calldata orderData,
         bytes[] calldata signatures
-    ) external override {}
+    ) external override checkSignature(orderData, signatures) {}
 
     function executeMatch(
         bytes calldata orderData,
         bytes[] calldata signatures
-    ) external override {}
+    ) external override checkSignature(orderData, signatures) {}
 
     function getUserOrders(
         uint256 limit,
