@@ -199,7 +199,7 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
         Match storage match_ = _matches[matchId - 1];
 
         require(selector == Selector.EXECUTE_MATCH, "Swapica: Wrong selector");
-        require(match_.state == State.AWAITING_FINALIZATION, "Swapica: Wrong match status");
+        require(match_.state == State.AWAITING_FINALIZATION, "Swapica: Match status is wrong");
 
         _checkSignatureRecipient(chainid, matchSwapica);
 
