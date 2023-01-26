@@ -15,6 +15,7 @@ import "../multisig/Signers.sol";
 contract Swapica is ISwapica, UUPSUpgradeable, Signers {
     using Paginator for uint256[];
     using Math for uint256;
+    using SafeERC20 for IERC20;
 
     Order[] public orders;
     Match[] public matches;
@@ -39,7 +40,29 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
         address tokenToBuy,
         uint256 amountToBuy,
         uint256 destinationChain
-    ) external payable override {}
+    ) external payable override {
+        OrderStatus memory status;
+        status.state = State.AWAITING_MATCH;
+
+        orders.push(
+            Order({
+                status: status,
+                creator: msg.sender,
+                tokenToSell: tokenToSell,
+                amountToSell: amountToSell,
+                tokenToBuy: tokenToBuy,
+                amountToBuy: amountToBuy,
+                destinationChain: destinationChain
+            })
+        );
+
+        uint256 currentOrderId = orders.length;
+
+        _userInfos[msg.sender].orderIds.push(currentOrderId - 1);
+        _lock(tokenToSell, msg.sender, amountToSell);
+
+        emit OrderUpdated(currentOrderId, status);
+    }
 
     function cancelOrder(uint256 orderId) external {}
 
@@ -117,4 +140,25 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+
+    function _lock(address token, address user, uint256 amount) internal {
+        bool isNativeCurrency = token == ETHEREUM_ADDRESS;
+
+        _userInfos[user].lockedAmount[token] += isNativeCurrency ? msg.value : amount;
+
+        if (!isNativeCurrency) {
+            IERC20(token).safeTransferFrom(user, address(this), amount);
+        }
+    }
+
+    function _release(address token, address from, address to, uint256 amount) internal {
+        _userInfos[from].lockedAmount[token] -= amount;
+
+        if (token == ETHEREUM_ADDRESS) {
+            (bool ok, ) = to.call{value: amount}("");
+            require(ok, "Swapica: Transferring failed");
+        } else {
+            IERC20(token).safeTransfer(to, amount);
+        }
+    }
 }
