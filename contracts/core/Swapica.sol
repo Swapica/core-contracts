@@ -59,12 +59,26 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
         uint256 currentOrderId = orders.length;
 
         _userInfos[msg.sender].orderIds.push(currentOrderId - 1);
+
         _lock(tokenToSell, msg.sender, amountToSell);
 
         emit OrderUpdated(currentOrderId, status);
     }
 
-    function cancelOrder(uint256 orderId) external {}
+    function cancelOrder(uint256 orderId) external {
+        Order storage order = orders[orderId];
+
+        address orderCreator = order.creator;
+
+        require(order.status.state == State.AWAITING_MATCH, "Swapica: Order status is wrong");
+        require(orderCreator == msg.sender, "Swapica: You're not a creator of the order");
+
+        order.state = State.CANCELED;
+
+        _release(order.tokenToSell, orderCreator, orderCreator, order.amountToSell);
+
+        emit OrderUpdated(id, orderStatus[id]);
+    }
 
     function executeOrder(
         bytes calldata orderData,
