@@ -10,6 +10,11 @@ import "./Globals.sol";
 import "../multisig/Signers.sol";
 
 contract Swapica is ISwapica, UUPSUpgradeable, Signers {
+    Order[] public orders;
+    Match[] public matches;
+
+    mapping(address => User) internal _userInfos;
+
     event OrderUpdated(uint256 indexed id, OrderStatus status);
     event MatchUpdated(uint256 indexed id, State status);
 

@@ -47,6 +47,7 @@ interface ISwapica {
     struct User {
         uint256[] orderIds;
         uint256[] matchIds;
+        mapping(address => uint256) lockedAmount;
     }
 
     function createOrder(
