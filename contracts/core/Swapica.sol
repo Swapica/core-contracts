@@ -17,8 +17,8 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
     using Math for uint256;
     using SafeERC20 for IERC20;
 
-    Order[] public orders;
-    Match[] public matches;
+    Order[] internal _orders;
+    Match[] internal _matches;
 
     mapping(address => User) internal _userInfos;
 
@@ -44,9 +44,9 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
         OrderStatus memory status;
         status.state = State.AWAITING_MATCH;
 
-        uint256 orderId = orders.length + 1;
+        uint256 orderId = _orders.length + 1;
 
-        orders.push(
+        _orders.push(
             Order({
                 status: status,
                 orderId: orderId,
@@ -67,7 +67,7 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
     }
 
     function cancelOrder(uint256 orderId) external {
-        Order storage order = orders[orderId - 1];
+        Order storage order = _orders[orderId - 1];
 
         address orderCreator = order.creator;
 
@@ -98,7 +98,7 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
                 (Selector, uint256, address, uint256, address, address, uint256)
             );
 
-        Order storage order = orders[orderId - 1];
+        Order storage order = _orders[orderId - 1];
 
         require(selector == Selector.EXECUTE_ORDER, "Swapica: Wrong selector");
         require(order.status.state == State.AWAITING_MATCH, "Swapica: Order status is wrong");
@@ -139,9 +139,9 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
 
         _checkSignatureRecipient(chainId, matchSwapica);
 
-        uint256 matchId = matches.length + 1;
+        uint256 matchId = _matches.length + 1;
 
-        matches.push(
+        _matches.push(
             Match({
                 state: State.AWAITING_FINALIZATION,
                 matchId: matchId,
@@ -169,7 +169,7 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
             (Selector, uint256, address, uint256)
         );
 
-        Match storage match_ = matches[matchId - 1];
+        Match storage match_ = _matches[matchId - 1];
 
         require(selector == Selector.CANCEL_MATCH, "Swapica: Wrong selector");
         require(match_.state == State.AWAITING_FINALIZATION, "Swapica: Match state is wrong");
@@ -196,7 +196,7 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
             address receiver
         ) = abi.decode(orderData, (Selector, uint256, address, uint256, address));
 
-        Match storage match_ = matches[matchId - 1];
+        Match storage match_ = _matches[matchId - 1];
 
         require(selector == Selector.EXECUTE_MATCH, "Swapica: Wrong selector");
         require(match_.state == State.AWAITING_FINALIZATION, "Swapica: Wrong match status");
@@ -220,7 +220,7 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
         userOrders = new Order[](orderIds.length);
 
         for (uint256 i; i < userOrders.length; i++) {
-            userOrders[i] = orders[orderIds[i]];
+            userOrders[i] = _orders[orderIds[i]];
         }
     }
 
@@ -234,7 +234,7 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
         userMatches = new Match[](matchIds.length);
 
         for (uint256 i; i < userMatches.length; i++) {
-            userMatches[i] = matches[matchIds[i]];
+            userMatches[i] = _matches[matchIds[i]];
         }
     }
 
@@ -242,12 +242,12 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
         uint256 offset,
         uint256 limit
     ) external view override returns (Order[] memory allOrders) {
-        uint256 to = (offset + limit).min(orders.length).max(offset);
+        uint256 to = (offset + limit).min(_orders.length).max(offset);
 
         allOrders = new Order[](to - offset);
 
         for (uint256 i = offset; i < to; i++) {
-            allOrders[i - offset] = orders[i];
+            allOrders[i - offset] = _orders[i];
         }
     }
 
@@ -260,7 +260,7 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
     }
 
     function getAllOrdersLength() external view override returns (uint256) {
-        return orders.length;
+        return _orders.length;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
