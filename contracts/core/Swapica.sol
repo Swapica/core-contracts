@@ -73,17 +73,49 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
         require(order.status.state == State.AWAITING_MATCH, "Swapica: Order status is wrong");
         require(orderCreator == msg.sender, "Swapica: You're not a creator of the order");
 
-        order.state = State.CANCELED;
+        order.status.state = State.CANCELED;
 
         _release(order.tokenToSell, orderCreator, orderCreator, order.amountToSell);
 
-        emit OrderUpdated(id, orderStatus[id]);
+        emit OrderUpdated(orderId, order.status);
     }
 
     function executeOrder(
         bytes calldata orderData,
         bytes[] calldata signatures
-    ) external override checkSignature(orderData, signatures) {}
+    ) external override checkSignature(orderData, signatures) {
+        (
+            Selector selector,
+            uint256 chainId,
+            address orderSwapica,
+            uint256 orderId,
+            address receiver,
+            address matchSwapica,
+            uint256 matchId
+        ) = abi.decode(
+                orderData,
+                (Selector, uint256, address, uint256, address, address, uint256)
+            );
+
+        Order storage order = orders[orderId - 1];
+
+        require(selector == Selector.EXECUTE_ORDER, "Swapica: Wrong selector");
+        require(order.status.state == State.AWAITING_MATCH, "Swapica: Order status is wrong");
+
+        _checkSignatureRecipient(chainId, orderSwapica);
+
+        OrderStatus memory status = OrderStatus({
+            state: State.EXECUTED,
+            matchId: matchId,
+            matchSwapica: matchSwapica
+        });
+
+        order.status = status;
+
+        _release(order.tokenToSell, order.creator, receiver, order.amountToSell);
+
+        emit OrderUpdated(orderId, status);
+    }
 
     function createMatch(
         bytes calldata orderData,
@@ -174,5 +206,10 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
         } else {
             IERC20(token).safeTransfer(to, amount);
         }
+    }
+
+    function _checkSignatureRecipient(uint256 chainId, address swapicaAddress) private view {
+        require(chainId == block.chainid, "Swapica: Wrong chain id");
+        require(swapicaAddress == address(this), "Swapica: Wrong swapica address");
     }
 }

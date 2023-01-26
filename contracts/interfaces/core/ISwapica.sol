@@ -39,7 +39,7 @@ interface ISwapica {
 
     struct OrderStatus {
         State state;
-        uint256 executedBy;
+        uint256 matchId;
         address matchSwapica;
     }
 
