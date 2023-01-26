@@ -163,7 +163,26 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
     function cancelMatch(
         bytes calldata orderData,
         bytes[] calldata signatures
-    ) external override checkSignature(orderData, signatures) {}
+    ) external override checkSignature(orderData, signatures) {
+        (Selector selector, uint256 chainId, address matchSwapica, uint256 matchId) = abi.decode(
+            orderData,
+            (Selector, uint256, address, uint256)
+        );
+
+        Match storage match_ = matches[matchId - 1];
+
+        require(selector == Selector.CANCEL_MATCH, "Swapica: Wrong Selector");
+        require(match_.state == State.AWAITING_FINALIZATION, "Swapica: Match state is wrong");
+        require(match_.creator == msg.sender, "Swapica: You're not a creator of the match");
+
+        _checkSignatureRecipient(chainId, matchSwapica);
+
+        match_.state = State.CANCELED;
+
+        _release(match_.tokenToSell, match_.creator, match_.creator, match_.amountToSell);
+
+        emit MatchUpdated(matchId, State.CANCELED);
+    }
 
     function executeMatch(
         bytes calldata orderData,
