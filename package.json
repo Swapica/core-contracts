@@ -33,7 +33,7 @@
     "typechain": "^8.1.0"
   },
   "devDependencies": {
-    "@dlsl/hardhat-migrate": "^1.4.0",
+    "@dlsl/hardhat-migrate": "^1.5.0",
     "@metamask/eth-sig-util": "^4.0.0",
     "@nomicfoundation/hardhat-toolbox": "^2.0.1",
     "@nomicfoundation/hardhat-chai-matchers": "^1.0.4",

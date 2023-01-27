@@ -6,7 +6,6 @@ import "@dlsl/hardhat-migrate";
 import "@nomicfoundation/hardhat-toolbox";
 
 import { HardhatUserConfig } from "hardhat/config";
-import { DlDeployUserConfig } from "@dlsl/hardhat-migrate/dist/src/types";
 
 import * as dotenv from "dotenv";
 dotenv.config();
@@ -25,8 +24,7 @@ function forceTypechain() {
   return process.env.TYPECHAIN_FORCE == "true";
 }
 
-// FIXME: HardhatUserConfig is not extended properly with dlsl/migrate
-const config: HardhatUserConfig & { migrate?: DlDeployUserConfig } = {
+const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       initialDate: "1970-01-01T00:00:00Z",
