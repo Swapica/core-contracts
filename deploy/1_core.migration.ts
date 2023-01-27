@@ -1,8 +1,7 @@
 // Include following line to get access to the ERC1967Proxy artifact.
 // import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import { Deployer } from "@dlsl/hardhat-migrate/dist/src/deployer/deployer";
-import { Logger } from "@dlsl/hardhat-migrate/dist/src/logger/logger";
+import { Deployer, Logger } from "@dlsl/hardhat-migrate";
 import { artifacts } from "hardhat";
 
 const signers = ["0xA2159b461D35E2c2faA5A561dE051ba8CCC1B9e7"];

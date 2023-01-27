@@ -1,5 +1,4 @@
-import { Deployer } from "@dlsl/hardhat-migrate/dist/src/deployer/deployer";
-import { Logger } from "@dlsl/hardhat-migrate/dist/src/logger/logger";
+import { Deployer, Logger } from "@dlsl/hardhat-migrate";
 import { artifacts } from "hardhat";
 
 // TODO: change debug addresses
