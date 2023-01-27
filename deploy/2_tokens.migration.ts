@@ -1,10 +1,14 @@
-const ERC20 = artifacts.require("ERC20Mock");
+import { Deployer } from "@dlsl/hardhat-migrate/dist/src/deployer/deployer";
+import { Logger } from "@dlsl/hardhat-migrate/dist/src/logger/logger";
+import { artifacts } from "hardhat";
 
 // TODO: change debug addresses
 const addrr1 = "0xf41ceE234219D6cc3d90A6996dC3276aD378cfCF";
 const addrr2 = "0xE461aa915538B81BA17995DF5FEDB96640f10BDE";
 
-module.exports = async (deployer, logger) => {
+const ERC20 = artifacts.require("ERC20Mock");
+
+export = async (deployer: Deployer, logger: Logger) => {
   const token1 = await deployer.deploy(ERC20, "Token1", "SWT1", 18);
   const token2 = await deployer.deploy(ERC20, "Token1", "SWT1", 18);
 

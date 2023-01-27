@@ -1,5 +1,7 @@
-const impersonate = async (address) => {
-  await hre.network.provider.request({
+import { network } from "hardhat";
+
+const impersonate = async (address: any) => {
+  await network.provider.request({
     method: "hardhat_impersonateAccount",
     params: [address],
   });
@@ -7,6 +9,4 @@ const impersonate = async (address) => {
   await network.provider.send("hardhat_setBalance", [address, "0xFFFFFFFFFFFFFFFF"]);
 };
 
-module.exports = {
-  impersonate,
-};
+export { impersonate };
