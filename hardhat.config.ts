@@ -1,13 +1,14 @@
-require("@nomiclabs/hardhat-web3");
-require("@nomiclabs/hardhat-truffle5");
-require("@nomicfoundation/hardhat-chai-matchers");
-require("@typechain/hardhat");
-require("hardhat-contract-sizer");
-require("hardhat-gas-reporter");
-require("solidity-coverage");
-require("@dlsl/hardhat-migrate");
+import "@nomiclabs/hardhat-web3";
+import "@nomiclabs/hardhat-truffle5";
+import "@nomicfoundation/hardhat-chai-matchers";
+import "hardhat-contract-sizer";
+import "@dlsl/hardhat-migrate";
+import "@nomicfoundation/hardhat-toolbox";
 
-const dotenv = require("dotenv");
+import { HardhatUserConfig } from "hardhat/config";
+import { DlDeployUserConfig } from "@dlsl/hardhat-migrate/dist/src/types";
+
+import * as dotenv from "dotenv";
 dotenv.config();
 
 function privateKey() {
@@ -24,7 +25,8 @@ function forceTypechain() {
   return process.env.TYPECHAIN_FORCE == "true";
 }
 
-module.exports = {
+// FIXME: HardhatUserConfig is not extended properly with dlsl/migrate
+const config: HardhatUserConfig & { migrate?: DlDeployUserConfig } = {
   networks: {
     hardhat: {
       initialDate: "1970-01-01T00:00:00Z",
@@ -102,6 +104,8 @@ module.exports = {
     target: typechainTarget(),
     alwaysGenerateOverloads: true,
     discriminateTypes: true,
-    dontOverrideCompile: true & !forceTypechain(),
+    dontOverrideCompile: !forceTypechain(),
   },
 };
+
+export default config;
