@@ -190,7 +190,7 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
     ) external override checkSignature(orderData, signatures) {
         (
             Selector selector,
-            uint256 chainid,
+            uint256 chainId,
             address matchSwapica,
             uint256 matchId,
             address receiver
@@ -201,7 +201,7 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
         require(selector == Selector.EXECUTE_MATCH, "Swapica: Wrong selector");
         require(match_.state == State.AWAITING_FINALIZATION, "Swapica: Match status is wrong");
 
-        _checkSignatureRecipient(chainid, matchSwapica);
+        _checkSignatureRecipient(chainId, matchSwapica);
 
         match_.state = State.EXECUTED;
 

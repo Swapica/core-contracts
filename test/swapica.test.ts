@@ -1,9 +1,9 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { Signers, Swapica } from "../generated-types/ethers";
+import { Swapica } from "../generated-types/ethers";
 
-describe("Signers", function () {
+describe("Swapica", function () {
   async function deploy() {
     const [owner, second, third] = await ethers.getSigners();
 
