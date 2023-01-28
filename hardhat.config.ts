@@ -1,9 +1,12 @@
 import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-truffle5";
+import "@nomiclabs/hardhat-ethers";
 import "@nomicfoundation/hardhat-chai-matchers";
-import "hardhat-contract-sizer";
+import "@typechain/hardhat";
 import "@dlsl/hardhat-migrate";
-import "@nomicfoundation/hardhat-toolbox";
+import "hardhat-contract-sizer";
+import "hardhat-gas-reporter";
+import "solidity-coverage";
 
 import { HardhatUserConfig } from "hardhat/config";
 
