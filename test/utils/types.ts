@@ -15,14 +15,6 @@ export enum State {
   EXECUTED,
 }
 
-export interface CreateOrderRequest {
-  tokenToSell: string;
-  amountToSell: BigNumberish;
-  tokenToBuy: string;
-  amountToBuy: BigNumberish;
-  destinationChain: BigNumberish;
-}
-
 export interface ExecuteOrderRequest {
   selector: Selector;
   chainId: BigNumberish;

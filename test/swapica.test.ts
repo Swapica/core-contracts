@@ -8,16 +8,15 @@ import { BigNumber } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { wei } from "../scripts/utils/utils";
 
-import {
-  CancelMatchRequest,
-  CreateMatchRequest,
-  CreateOrderRequest,
-  ExecuteMatchRequest,
-  ExecuteOrderRequest,
-  State,
-} from "./utils/types";
+import { CancelMatchRequest, CreateMatchRequest, ExecuteMatchRequest, ExecuteOrderRequest, State } from "./utils/types";
 
 import { ETHER_ADDR, ZERO_ADDR } from "../scripts/utils/constants";
+import { ISwapica } from "../generated-types/ethers/contracts/core/Swapica";
+
+import CreateOrderRequestStruct = ISwapica.CreateOrderRequestStruct;
+
+import OrderStruct = ISwapica.OrderStruct;
+import OrderStructOutput = ISwapica.OrderStructOutput;
 
 describe("Swapica", function () {
   const defaultChainId = BigNumber.from(31337);
@@ -63,6 +62,32 @@ describe("Swapica", function () {
     await swapica.connect(from).executeMatch(messageBytes, signatures);
   }
 
+  async function getOrderById(id: number): Promise<OrderStruct> {
+    return orderToObject((await swapica.getAllOrders(id - 1, 1))[0]);
+  }
+
+  function orderToObject(order: OrderStructOutput): OrderStruct {
+    console.log(order);
+    return {
+      status: {
+        state: order.status.state,
+        matchId: order.status.matchId,
+        matchSwapica: order.status.matchSwapica,
+      },
+      orderId: order.orderId,
+      creator: order.creator,
+      tokenToSell: order.tokenToSell,
+      amountToSell: order.amountToSell,
+      tokenToBuy: order.tokenToBuy,
+      amountToBuy: order.amountToBuy,
+      destinationChain: order.destinationChain,
+    };
+  }
+
+  function ordersToObject(orders: OrderStructOutput[]): OrderStruct[] {
+    return orders.map((order) => orderToObject(order));
+  }
+
   before(async function () {
     [owner, signer1, signer2, orderMaker, matchMaker] = await ethers.getSigners();
   });
@@ -85,7 +110,13 @@ describe("Swapica", function () {
   });
 
   describe("#createOrder", async function () {
-    let createOrderRequest: CreateOrderRequest;
+    const status = {
+      state: State.AWAITING_MATCH,
+      matchId: BigNumber.from(0),
+      matchSwapica: ZERO_ADDR,
+    };
+
+    let createOrderRequest: CreateOrderRequestStruct;
 
     beforeEach(async function () {
       createOrderRequest = {
@@ -122,7 +153,14 @@ describe("Swapica", function () {
 
       await expect(tx).to.changeEtherBalances([orderMaker, swapica], [wei(-1), wei(1)]);
 
-      await expect(tx).to.emit(swapica, "OrderUpdated").withArgs(1, [State.AWAITING_MATCH, 0, ZERO_ADDR]);
+      await expect(tx).to.emit(swapica, "OrderUpdated").withArgs(1, Object.values(status));
+
+      expect(await getOrderById(1)).to.be.deep.eq({
+        status: status,
+        orderId: 1,
+        creator: orderMaker.address,
+        ...createOrderRequest,
+      });
     });
   });
 });
