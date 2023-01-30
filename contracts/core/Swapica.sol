@@ -34,13 +34,7 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
         __Signers_init(signers, signers.length);
     }
 
-    function createOrder(
-        address tokenToSell,
-        uint256 amountToSell,
-        address tokenToBuy,
-        uint256 amountToBuy,
-        uint256 destinationChain
-    ) external payable override {
+    function createOrder(CreateOrderRequest memory request) external payable override {
         OrderStatus memory status;
         status.state = State.AWAITING_MATCH;
 
@@ -51,17 +45,17 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
                 status: status,
                 orderId: orderId,
                 creator: msg.sender,
-                tokenToSell: tokenToSell,
-                amountToSell: amountToSell,
-                tokenToBuy: tokenToBuy,
-                amountToBuy: amountToBuy,
-                destinationChain: destinationChain
+                tokenToSell: request.tokenToSell,
+                amountToSell: request.amountToSell,
+                tokenToBuy: request.tokenToBuy,
+                amountToBuy: request.amountToBuy,
+                destinationChain: request.destinationChain
             })
         );
 
         _userInfos[msg.sender].orderIds.push(orderId - 1);
 
-        _lock(tokenToSell, msg.sender, amountToSell);
+        _lock(request.tokenToSell, msg.sender, request.amountToSell);
 
         emit OrderUpdated(orderId, status);
     }
@@ -237,11 +231,13 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
     function _lock(address token, address user, uint256 amount) internal {
         bool isNativeCurrency = token == ETHEREUM_ADDRESS;
 
-        _userInfos[user].lockedAmount[token] += isNativeCurrency ? msg.value : amount;
-
-        if (!isNativeCurrency) {
+        if (isNativeCurrency) {
+            require(amount == msg.value, "Swapica: Wrong amount");
+        } else {
             IERC20(token).safeTransferFrom(user, address(this), amount);
         }
+
+        _userInfos[user].lockedAmount[token] += amount;
     }
 
     function _release(address token, address from, address to, uint256 amount) internal {

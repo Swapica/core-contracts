@@ -1,3 +1,4 @@
+import { expect } from "chai";
 import { ethers } from "hardhat";
 import { ERC20Mock, Swapica } from "../generated-types/ethers";
 
@@ -10,10 +11,13 @@ import { wei } from "../scripts/utils/utils";
 import {
   CancelMatchRequest,
   CreateMatchRequest,
+  CreateOrderRequest,
   ExecuteMatchRequest,
   ExecuteOrderRequest,
-  Selector,
+  State,
 } from "./utils/types";
+
+import { ETHER_ADDR, ZERO_ADDR } from "../scripts/utils/constants";
 
 describe("Swapica", function () {
   const defaultChainId = BigNumber.from(31337);
@@ -80,17 +84,45 @@ describe("Swapica", function () {
     await matchToken.connect(matchMaker).approve(swapica.address, wei(1000));
   });
 
-  it("sample", async function () {
-    const match: CreateMatchRequest = {
-      selector: Selector.CREATE_MATCH,
-      chainId: defaultChainId,
-      matchSwapica: swapica.address,
-      orderId: 1,
-      tokenToSell: matchToken.address,
-      amountToSell: wei(1),
-      originChain: defaultChainId,
-    };
+  describe("#createOrder", async function () {
+    let createOrderRequest: CreateOrderRequest;
 
-    await createMatch(match, matchMaker);
+    beforeEach(async function () {
+      createOrderRequest = {
+        tokenToSell: orderToken.address,
+        amountToSell: wei(1),
+        tokenToBuy: matchToken.address,
+        amountToBuy: wei(2),
+        destinationChain: defaultChainId,
+      };
+    });
+
+    it("should not create if ether amounts mismatch", async function () {
+      createOrderRequest.tokenToSell = ETHER_ADDR;
+
+      const tx = swapica.connect(orderMaker).createOrder(createOrderRequest);
+
+      await expect(tx).to.be.revertedWith("Swapica: Wrong amount");
+    });
+
+    it("should create a token-token order properly if all conditions are met", async function () {
+      const tx = swapica.connect(orderMaker).createOrder(createOrderRequest);
+
+      await expect(tx).to.changeTokenBalances(orderToken, [orderMaker, swapica], [wei(-1), wei(1)]);
+
+      await expect(tx).to.emit(swapica, "OrderUpdated").withArgs(1, [State.AWAITING_MATCH, 0, ZERO_ADDR]);
+    });
+
+    it("should create an eth-token order properly if all conditions are met", async function () {
+      createOrderRequest.tokenToSell = ETHER_ADDR;
+
+      const tx = swapica
+        .connect(orderMaker)
+        .createOrder(createOrderRequest, { value: createOrderRequest.amountToSell });
+
+      await expect(tx).to.changeEtherBalances([orderMaker, swapica], [wei(-1), wei(1)]);
+
+      await expect(tx).to.emit(swapica, "OrderUpdated").withArgs(1, [State.AWAITING_MATCH, 0, ZERO_ADDR]);
+    });
   });
 });

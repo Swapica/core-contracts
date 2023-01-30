@@ -50,6 +50,14 @@ interface ISwapica {
         mapping(address => uint256) lockedAmount;
     }
 
+    struct CreateOrderRequest {
+        address tokenToSell;
+        uint256 amountToSell;
+        address tokenToBuy;
+        uint256 amountToBuy;
+        uint256 destinationChain;
+    }
+
     struct ExecuteOrderRequest {
         Selector selector;
         uint256 chainId;
@@ -85,13 +93,7 @@ interface ISwapica {
         address receiver;
     }
 
-    function createOrder(
-        address tokenToSell,
-        uint256 amountToSell,
-        address tokenToBuy,
-        uint256 amountToBuy,
-        uint256 destinationChain
-    ) external payable;
+    function createOrder(CreateOrderRequest memory request) external payable;
 
     function cancelOrder(uint256 orderId) external;
 
