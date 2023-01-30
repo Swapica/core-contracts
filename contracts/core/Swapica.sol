@@ -82,62 +82,40 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
     }
 
     function executeOrder(
-        bytes calldata orderData,
+        bytes calldata data,
         bytes[] calldata signatures
-    ) external override checkSignature(orderData, signatures) {
-        (
-            Selector selector,
-            uint256 chainId,
-            address orderSwapica,
-            uint256 orderId,
-            address receiver,
-            address matchSwapica,
-            uint256 matchId
-        ) = abi.decode(
-                orderData,
-                (Selector, uint256, address, uint256, address, address, uint256)
-            );
+    ) external override checkSignature(data, signatures) {
+        ExecuteOrderRequest memory request = abi.decode(data, (ExecuteOrderRequest));
 
-        Order storage order = _orders[orderId - 1];
+        Order storage order = _orders[request.orderId - 1];
 
-        require(selector == Selector.EXECUTE_ORDER, "Swapica: Wrong selector");
+        require(request.selector == Selector.EXECUTE_ORDER, "Swapica: Wrong selector");
         require(order.status.state == State.AWAITING_MATCH, "Swapica: Order status is wrong");
 
-        _checkSignatureRecipient(chainId, orderSwapica);
+        _checkSignatureRecipient(request.chainId, request.orderSwapica);
 
         OrderStatus memory status = OrderStatus({
             state: State.EXECUTED,
-            matchId: matchId,
-            matchSwapica: matchSwapica
+            matchId: request.matchId,
+            matchSwapica: request.matchSwapica
         });
 
         order.status = status;
 
-        _release(order.tokenToSell, order.creator, receiver, order.amountToSell);
+        _release(order.tokenToSell, order.creator, request.receiver, order.amountToSell);
 
-        emit OrderUpdated(orderId, status);
+        emit OrderUpdated(request.orderId, status);
     }
 
     function createMatch(
-        bytes calldata orderData,
+        bytes calldata data,
         bytes[] calldata signatures
-    ) external payable override checkSignature(orderData, signatures) {
-        (
-            Selector selector,
-            uint256 chainId,
-            address matchSwapica,
-            uint256 orderId,
-            address tokenToSell,
-            uint256 amountToSell,
-            uint256 originChain
-        ) = abi.decode(
-                orderData,
-                (Selector, uint256, address, uint256, address, uint256, uint256)
-            );
+    ) external payable override checkSignature(data, signatures) {
+        CreateMatchRequest memory request = abi.decode(data, (CreateMatchRequest));
 
-        require(selector == Selector.CREATE_MATCH, "Swapica: Wrong selector");
+        require(request.selector == Selector.CREATE_MATCH, "Swapica: Wrong selector");
 
-        _checkSignatureRecipient(chainId, matchSwapica);
+        _checkSignatureRecipient(request.chainId, request.matchSwapica);
 
         uint256 matchId = _matches.length + 1;
 
@@ -145,69 +123,60 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
             Match({
                 state: State.AWAITING_FINALIZATION,
                 matchId: matchId,
-                originOrderId: orderId,
+                originOrderId: request.orderId,
                 creator: msg.sender,
-                tokenToSell: tokenToSell,
-                amountToSell: amountToSell,
-                originChainId: originChain
+                tokenToSell: request.tokenToSell,
+                amountToSell: request.amountToSell,
+                originChainId: request.originChain
             })
         );
 
         _userInfos[msg.sender].matchIds.push(matchId - 1);
 
-        _lock(tokenToSell, msg.sender, amountToSell);
+        _lock(request.tokenToSell, msg.sender, request.amountToSell);
 
         emit MatchUpdated(matchId, State.AWAITING_FINALIZATION);
     }
 
     function cancelMatch(
-        bytes calldata orderData,
+        bytes calldata data,
         bytes[] calldata signatures
-    ) external override checkSignature(orderData, signatures) {
-        (Selector selector, uint256 chainId, address matchSwapica, uint256 matchId) = abi.decode(
-            orderData,
-            (Selector, uint256, address, uint256)
-        );
+    ) external override checkSignature(data, signatures) {
+        CancelMatchRequest memory request = abi.decode(data, (CancelMatchRequest));
 
-        Match storage match_ = _matches[matchId - 1];
+        Match storage match_ = _matches[request.matchId - 1];
 
-        require(selector == Selector.CANCEL_MATCH, "Swapica: Wrong selector");
+        require(request.selector == Selector.CANCEL_MATCH, "Swapica: Wrong selector");
         require(match_.state == State.AWAITING_FINALIZATION, "Swapica: Match state is wrong");
         require(match_.creator == msg.sender, "Swapica: You're not a creator of the match");
 
-        _checkSignatureRecipient(chainId, matchSwapica);
+        _checkSignatureRecipient(request.chainId, request.matchSwapica);
 
         match_.state = State.CANCELED;
 
         _release(match_.tokenToSell, match_.creator, match_.creator, match_.amountToSell);
 
-        emit MatchUpdated(matchId, State.CANCELED);
+        emit MatchUpdated(request.matchId, State.CANCELED);
     }
 
     function executeMatch(
-        bytes calldata orderData,
+        bytes calldata data,
         bytes[] calldata signatures
-    ) external override checkSignature(orderData, signatures) {
-        (
-            Selector selector,
-            uint256 chainId,
-            address matchSwapica,
-            uint256 matchId,
-            address receiver
-        ) = abi.decode(orderData, (Selector, uint256, address, uint256, address));
+    ) external override checkSignature(data, signatures) {
+        ExecuteMatchRequest memory request = abi.decode(data, (ExecuteMatchRequest));
 
-        Match storage match_ = _matches[matchId - 1];
+        Match storage match_ = _matches[request.matchId - 1];
 
-        require(selector == Selector.EXECUTE_MATCH, "Swapica: Wrong selector");
+        require(request.selector == Selector.EXECUTE_MATCH, "Swapica: Wrong selector");
         require(match_.state == State.AWAITING_FINALIZATION, "Swapica: Match status is wrong");
 
-        _checkSignatureRecipient(chainId, matchSwapica);
+        _checkSignatureRecipient(request.chainId, request.matchSwapica);
 
         match_.state = State.EXECUTED;
 
-        _release(match_.tokenToSell, match_.creator, receiver, match_.amountToSell);
+        _release(match_.tokenToSell, match_.creator, request.receiver, match_.amountToSell);
 
-        emit MatchUpdated(matchId, State.EXECUTED);
+        emit MatchUpdated(request.matchId, State.EXECUTED);
     }
 
     function getUserOrders(

@@ -1,28 +1,96 @@
-import { expect } from "chai";
 import { ethers } from "hardhat";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { Swapica } from "../generated-types/ethers";
+import { ERC20Mock, Swapica } from "../generated-types/ethers";
+
+import { cancelMatchBytes, createMatchBytes, executeMatchBytes, executeOrderBytes, signEach } from "./utils/signature";
+
+import { BigNumber } from "ethers";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { wei } from "../scripts/utils/utils";
+
+import {
+  CancelMatchRequest,
+  CreateMatchRequest,
+  ExecuteMatchRequest,
+  ExecuteOrderRequest,
+  Selector,
+} from "./utils/types";
 
 describe("Swapica", function () {
-  async function deploy() {
-    const [owner, second, third] = await ethers.getSigners();
+  const defaultChainId = BigNumber.from(31337);
 
-    const Swapica = await ethers.getContractFactory("Swapica");
+  let swapica: Swapica;
+  let orderToken: ERC20Mock;
+  let matchToken: ERC20Mock;
+  let owner: SignerWithAddress;
+  let orderMaker: SignerWithAddress;
+  let matchMaker: SignerWithAddress;
+  let signer1: SignerWithAddress;
+  let signer2: SignerWithAddress;
 
-    const swapica: Swapica = await Swapica.deploy();
+  async function createMatch(data: CreateMatchRequest, from = owner) {
+    const messageBytes = createMatchBytes(data);
 
-    await swapica.__Swapica_init([owner.address, third.address]);
+    const signatures = await signEach([signer1, signer2], messageBytes);
 
-    return { owner, second, third, swapica };
+    await swapica.connect(from).createMatch(messageBytes, signatures);
   }
 
+  async function executeMatch(data: ExecuteMatchRequest, from = owner) {
+    const messageBytes = executeMatchBytes(data);
+
+    const signatures = await signEach([signer1, signer2], messageBytes);
+
+    await swapica.connect(from).executeMatch(messageBytes, signatures);
+  }
+
+  async function cancelMatch(data: CancelMatchRequest, from = owner) {
+    const messageBytes = cancelMatchBytes(data);
+
+    const signatures = await signEach([signer1, signer2], messageBytes);
+
+    await swapica.connect(from).executeMatch(messageBytes, signatures);
+  }
+
+  async function executeOrder(data: ExecuteOrderRequest, from = owner) {
+    const messageBytes = executeOrderBytes(data);
+
+    const signatures = await signEach([signer1, signer2], messageBytes);
+
+    await swapica.connect(from).executeMatch(messageBytes, signatures);
+  }
+
+  before(async function () {
+    [owner, signer1, signer2, orderMaker, matchMaker] = await ethers.getSigners();
+  });
+
+  beforeEach(async function () {
+    const Swapica = await ethers.getContractFactory("Swapica");
+    swapica = await Swapica.deploy();
+
+    await swapica.__Swapica_init([signer1.address, signer2.address]);
+
+    const ERC20 = await ethers.getContractFactory("ERC20Mock");
+    orderToken = await ERC20.deploy("OrderToken", "OT", 18);
+    matchToken = await ERC20.deploy("MatchToken", "MT", 18);
+
+    await orderToken.mint(orderMaker.address, wei(1000));
+    await orderToken.connect(orderMaker).approve(swapica.address, wei(1000));
+
+    await matchToken.mint(matchMaker.address, wei(1000));
+    await matchToken.connect(matchMaker).approve(swapica.address, wei(1000));
+  });
+
   it("sample", async function () {
-    const { owner, third, swapica } = await loadFixture(deploy);
+    const match: CreateMatchRequest = {
+      selector: Selector.CREATE_MATCH,
+      chainId: defaultChainId,
+      matchSwapica: swapica.address,
+      orderId: 1,
+      tokenToSell: matchToken.address,
+      amountToSell: wei(1),
+      originChain: defaultChainId,
+    };
 
-    console.log(owner.address, third.address, swapica.address, await swapica.owner());
-
-    await expect(swapica.connect(third).transferOwnership(third.address)).to.be.revertedWith(
-      "Ownable: caller is not the owner"
-    );
+    await createMatch(match, matchMaker);
   });
 });
