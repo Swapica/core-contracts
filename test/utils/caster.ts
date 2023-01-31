@@ -9,11 +9,13 @@ export function cast(o: any): any {
 }
 
 function castStruct(o: any): any {
-  if (!Object.keys(o).some((key) => !Number.isInteger(+key)) || o instanceof BigNumber) {
+  const allKeys = Object.keys(o);
+
+  if (!allKeys.some((key) => !Number.isInteger(+key)) || o instanceof BigNumber) {
     return o;
   }
 
-  return Object.keys(o).reduce((prevKeys: any, currentKey: string) => {
+  return allKeys.reduce((prevKeys: any, currentKey: string) => {
     if (Number.isInteger(+currentKey)) {
       return prevKeys;
     }
