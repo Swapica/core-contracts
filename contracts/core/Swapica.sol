@@ -229,9 +229,7 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     function _lock(address token, address user, uint256 amount) internal {
-        bool isNativeCurrency = token == ETHEREUM_ADDRESS;
-
-        if (isNativeCurrency) {
+        if (token == ETHEREUM_ADDRESS) {
             require(amount == msg.value, "Swapica: Wrong amount");
         } else {
             IERC20(token).safeTransferFrom(user, address(this), amount);
