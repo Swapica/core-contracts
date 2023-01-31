@@ -7,6 +7,7 @@ import { cancelMatchBytes, createMatchBytes, executeMatchBytes, executeOrderByte
 import { BigNumber } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { wei } from "../scripts/utils/utils";
+import { Reverter } from "./helpers/reverter";
 
 import {
   CancelMatchRequest,
@@ -29,6 +30,8 @@ import MatchStructOutput = ISwapica.MatchStructOutput;
 
 describe("Swapica", function () {
   const defaultChainId = BigNumber.from(31337);
+
+  const reverter = new Reverter();
 
   let swapica: Swapica;
   let orderToken: ERC20Mock;
@@ -112,9 +115,7 @@ describe("Swapica", function () {
 
   before(async function () {
     [owner, signer1, signer2, orderMaker, matchMaker] = await ethers.getSigners();
-  });
 
-  beforeEach(async function () {
     const Swapica = await ethers.getContractFactory("Swapica");
 
     swapica = (await upgrades.deployProxy(Swapica, [[signer1.address, signer2.address]], {
@@ -131,7 +132,11 @@ describe("Swapica", function () {
 
     await matchToken.mint(matchMaker.address, wei(1000));
     await matchToken.connect(matchMaker).approve(swapica.address, wei(1000));
+
+    await reverter.snapshot();
   });
+
+  afterEach(reverter.revert);
 
   describe("proxy functionality", function () {
     describe("#__Swapica_init", function () {
