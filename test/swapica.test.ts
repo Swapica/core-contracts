@@ -4,7 +4,7 @@ import { ERC20Mock, Swapica } from "../generated-types/ethers";
 
 import { cancelMatchBytes, createMatchBytes, executeMatchBytes, executeOrderBytes, signEach } from "./utils/signature";
 
-import { BigNumber } from "ethers";
+import { BigNumber, BigNumberish } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { wei } from "../scripts/utils/utils";
 
@@ -18,11 +18,14 @@ import {
 } from "./utils/types";
 
 import { ETHER_ADDR, ZERO_ADDR } from "../scripts/utils/constants";
-import { ISwapica } from "../generated-types/ethers/contracts/core/Swapica";
-import CreateOrderRequestStruct = ISwapica.CreateOrderRequestStruct;
 
+import { ISwapica } from "../generated-types/ethers/contracts/core/Swapica";
+
+import CreateOrderRequestStruct = ISwapica.CreateOrderRequestStruct;
 import OrderStruct = ISwapica.OrderStruct;
 import OrderStructOutput = ISwapica.OrderStructOutput;
+import MatchStruct = ISwapica.MatchStruct;
+import MatchStructOutput = ISwapica.MatchStructOutput;
 
 describe("Swapica", function () {
   const defaultChainId = BigNumber.from(31337);
@@ -36,12 +39,12 @@ describe("Swapica", function () {
   let signer1: SignerWithAddress;
   let signer2: SignerWithAddress;
 
-  async function createMatch(data: CreateMatchRequest, from: SignerWithAddress) {
+  async function createMatch(data: CreateMatchRequest, from: SignerWithAddress, value: BigNumberish = 0) {
     const messageBytes = createMatchBytes(data);
 
     const signatures = await signEach([signer1, signer2], messageBytes);
 
-    return swapica.connect(from).createMatch(messageBytes, signatures);
+    return swapica.connect(from).createMatch(messageBytes, signatures, { value: value });
   }
 
   async function executeMatch(data: ExecuteMatchRequest, from: SignerWithAddress) {
@@ -91,6 +94,22 @@ describe("Swapica", function () {
 
   function ordersToObject(orders: OrderStructOutput[]): OrderStruct[] {
     return orders.map((order) => orderToObject(order));
+  }
+
+  function matchToObject(match: MatchStructOutput): MatchStruct {
+    return {
+      state: match.state,
+      matchId: match.matchId,
+      originOrderId: match.originOrderId,
+      creator: match.creator,
+      tokenToSell: match.tokenToSell,
+      amountToSell: match.amountToSell,
+      originChainId: match.originChainId,
+    };
+  }
+
+  function matchesToObject(matches: MatchStructOutput[]): MatchStruct[] {
+    return matches.map((match) => matchToObject(match));
   }
 
   before(async function () {
@@ -172,10 +191,8 @@ describe("Swapica", function () {
   });
 
   context("if order created", function () {
-    let createOrderRequest: CreateOrderRequestStruct;
-
     beforeEach(async function () {
-      createOrderRequest = {
+      const createOrderRequest: CreateOrderRequestStruct = {
         tokenToSell: orderToken.address,
         amountToSell: wei(1),
         tokenToBuy: matchToken.address,
@@ -203,13 +220,6 @@ describe("Swapica", function () {
         await expect(tx).to.changeTokenBalances(orderToken, [orderMaker, swapica], [wei(1), wei(-1)]);
 
         await expect(tx).to.emit(swapica, "OrderUpdated").withArgs(1, Object.values(status));
-
-        expect(await getOrderById(1)).to.be.deep.eq({
-          status: status,
-          orderId: 1,
-          creator: orderMaker.address,
-          ...createOrderRequest,
-        });
       });
 
       it("should not cancel if state is wrong", async function () {
@@ -262,10 +272,8 @@ describe("Swapica", function () {
     });
 
     context("if match created", function () {
-      let createMatchRequest: CreateMatchRequest;
-
       beforeEach(async function () {
-        createMatchRequest = {
+        const createMatchRequest: CreateMatchRequest = {
           selector: Selector.CREATE_MATCH,
           chainId: defaultChainId,
           matchSwapica: swapica.address,
@@ -381,7 +389,7 @@ describe("Swapica", function () {
         });
       });
 
-      describe.only("#executeOrder", function () {
+      describe("#executeOrder", function () {
         let executeOrderRequest: ExecuteOrderRequest;
 
         beforeEach(async function () {
@@ -431,6 +439,192 @@ describe("Swapica", function () {
 
           await expect(tx).to.emit(swapica, "OrderUpdated").withArgs(1, [State.EXECUTED, 1, swapica.address]);
         });
+      });
+    });
+  });
+
+  context("if multiple orders and matches", function () {
+    let createOrderRequests: CreateOrderRequestStruct[];
+    let createMatchRequests: CreateMatchRequest[];
+
+    let orders: OrderStruct[];
+    let matches: MatchStruct[];
+
+    beforeEach(async function () {
+      createOrderRequests = [
+        {
+          tokenToSell: orderToken.address,
+          amountToSell: wei(1),
+          tokenToBuy: matchToken.address,
+          amountToBuy: wei(2),
+          destinationChain: defaultChainId,
+        },
+        {
+          tokenToSell: ETHER_ADDR,
+          amountToSell: wei(3),
+          tokenToBuy: matchToken.address,
+          amountToBuy: wei(4),
+          destinationChain: defaultChainId,
+        },
+        {
+          tokenToSell: orderToken.address,
+          amountToSell: wei(5),
+          tokenToBuy: ETHER_ADDR,
+          amountToBuy: wei(6),
+          destinationChain: defaultChainId,
+        },
+      ];
+
+      createMatchRequests = [
+        {
+          selector: Selector.CREATE_MATCH,
+          chainId: defaultChainId,
+          matchSwapica: swapica.address,
+          orderId: 1,
+          tokenToSell: matchToken.address,
+          amountToSell: wei(2),
+          originChain: defaultChainId,
+        },
+        {
+          selector: Selector.CREATE_MATCH,
+          chainId: defaultChainId,
+          matchSwapica: swapica.address,
+          orderId: 3,
+          tokenToSell: ETHER_ADDR,
+          amountToSell: wei(6),
+          originChain: defaultChainId,
+        },
+      ];
+
+      for (const request of createOrderRequests) {
+        await swapica.connect(orderMaker).createOrder(request, { value: request.amountToSell });
+      }
+
+      for (const request of createMatchRequests) {
+        await createMatch(request, matchMaker, request.amountToSell);
+      }
+
+      await swapica.connect(orderMaker).cancelOrder(2);
+
+      await executeOrder(
+        {
+          selector: Selector.EXECUTE_ORDER,
+          chainId: defaultChainId,
+          orderSwapica: swapica.address,
+          orderId: 1,
+          receiver: matchMaker.address,
+          matchSwapica: swapica.address,
+          matchId: 1,
+        },
+        matchMaker
+      );
+
+      await executeMatch(
+        {
+          selector: Selector.EXECUTE_MATCH,
+          chainId: defaultChainId,
+          matchSwapica: swapica.address,
+          matchId: 1,
+          receiver: orderMaker.address,
+        },
+        orderMaker
+      );
+
+      orders = [
+        {
+          status: {
+            state: State.EXECUTED,
+            matchId: 1,
+            matchSwapica: swapica.address,
+          },
+          orderId: 1,
+          creator: orderMaker.address,
+          ...createOrderRequests[0],
+        },
+        {
+          status: {
+            state: State.CANCELED,
+            matchId: 0,
+            matchSwapica: ZERO_ADDR,
+          },
+          orderId: 2,
+          creator: orderMaker.address,
+          ...createOrderRequests[1],
+        },
+        {
+          status: {
+            state: State.AWAITING_MATCH,
+            matchId: 0,
+            matchSwapica: ZERO_ADDR,
+          },
+          orderId: 3,
+          creator: orderMaker.address,
+          ...createOrderRequests[2],
+        },
+      ];
+
+      matches = [
+        {
+          state: State.EXECUTED,
+          matchId: 1,
+          originChainId: defaultChainId,
+          creator: matchMaker.address,
+          tokenToSell: matchToken.address,
+          amountToSell: wei(2),
+          originOrderId: 1,
+        },
+        {
+          state: State.AWAITING_FINALIZATION,
+          matchId: 2,
+          originChainId: defaultChainId,
+          creator: matchMaker.address,
+          tokenToSell: ETHER_ADDR,
+          amountToSell: wei(6),
+          originOrderId: 3,
+        },
+      ];
+    });
+
+    describe("#getUserOrders", function () {
+      it("should return whole range properly", async function () {
+        expect(ordersToObject(await swapica.getUserOrders(matchMaker.address, 0, 10))).to.be.deep.eq([]);
+        expect(ordersToObject(await swapica.getUserOrders(orderMaker.address, 0, 10))).to.be.deep.eq(orders);
+      });
+
+      it("should return part properly", async function () {
+        expect(ordersToObject(await swapica.getUserOrders(orderMaker.address, 0, 1))).to.be.deep.eq(orders.slice(0, 1));
+        expect(ordersToObject(await swapica.getUserOrders(orderMaker.address, 1, 2))).to.be.deep.eq(orders.slice(1, 3));
+        expect(ordersToObject(await swapica.getUserOrders(orderMaker.address, 3, 1))).to.be.deep.eq([]);
+      });
+    });
+
+    describe("#getUserMatches", function () {
+      it("should return whole range properly", async function () {
+        expect(matchesToObject(await swapica.getUserMatches(orderMaker.address, 0, 10))).to.be.deep.eq([]);
+        expect(matchesToObject(await swapica.getUserMatches(matchMaker.address, 0, 10))).to.be.deep.eq(matches);
+      });
+
+      it("should return part properly", async function () {
+        expect(matchesToObject(await swapica.getUserMatches(matchMaker.address, 0, 1))).to.be.deep.eq(
+          matches.slice(0, 1)
+        );
+        expect(matchesToObject(await swapica.getUserMatches(matchMaker.address, 1, 1))).to.be.deep.eq(
+          matches.slice(1, 2)
+        );
+        expect(matchesToObject(await swapica.getUserMatches(matchMaker.address, 2, 1))).to.be.deep.eq([]);
+      });
+    });
+
+    describe("#getAllOrders", function () {
+      it("should return whole range properly", async function () {
+        expect(ordersToObject(await swapica.getAllOrders(0, 10))).to.be.deep.eq(orders);
+      });
+
+      it("should return part properly", async function () {
+        expect(ordersToObject(await swapica.getAllOrders(0, 1))).to.be.deep.eq(orders.slice(0, 1));
+        expect(ordersToObject(await swapica.getAllOrders(1, 1))).to.be.deep.eq(orders.slice(1, 2));
+        expect(ordersToObject(await swapica.getAllOrders(1, 2))).to.be.deep.eq(orders.slice(1, 3));
+        expect(ordersToObject(await swapica.getAllOrders(3, 2))).to.be.deep.eq([]);
       });
     });
   });
