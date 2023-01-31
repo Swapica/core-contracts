@@ -7,6 +7,7 @@ import "@dlsl/hardhat-migrate";
 import "hardhat-contract-sizer";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
+import "@openzeppelin/hardhat-upgrades";
 
 import { HardhatUserConfig } from "hardhat/config";
 
