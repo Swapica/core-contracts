@@ -4,7 +4,7 @@ import { ERC20Mock, Swapica } from "../generated-types/ethers";
 
 import { cancelMatchBytes, createMatchBytes, executeMatchBytes, executeOrderBytes, signEach } from "./utils/signature";
 
-import { BigNumber, BigNumberish } from "ethers";
+import { BigNumber } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { wei } from "../scripts/utils/utils";
 
@@ -39,40 +39,38 @@ describe("Swapica", function () {
   let signer1: SignerWithAddress;
   let signer2: SignerWithAddress;
 
-  async function createMatch(data: CreateMatchRequest, from: SignerWithAddress, value: BigNumberish = 0) {
+  async function createMatch(data: CreateMatchRequest, from: SignerWithAddress, signers = [signer1, signer2]) {
     const messageBytes = createMatchBytes(data);
 
-    const signatures = await signEach([signer1, signer2], messageBytes);
+    const signatures = await signEach(signers, messageBytes);
 
-    return swapica.connect(from).createMatch(messageBytes, signatures, { value: value });
+    return swapica
+      .connect(from)
+      .createMatch(messageBytes, signatures, { value: data.tokenToSell == ETHER_ADDR ? data.amountToSell : 0 });
   }
 
-  async function executeMatch(data: ExecuteMatchRequest, from: SignerWithAddress) {
+  async function executeMatch(data: ExecuteMatchRequest, from: SignerWithAddress, signers = [signer1, signer2]) {
     const messageBytes = executeMatchBytes(data);
 
-    const signatures = await signEach([signer1, signer2], messageBytes);
+    const signatures = await signEach(signers, messageBytes);
 
     return swapica.connect(from).executeMatch(messageBytes, signatures);
   }
 
-  async function cancelMatch(data: CancelMatchRequest, from: SignerWithAddress) {
+  async function cancelMatch(data: CancelMatchRequest, from: SignerWithAddress, signers = [signer1, signer2]) {
     const messageBytes = cancelMatchBytes(data);
 
-    const signatures = await signEach([signer1, signer2], messageBytes);
+    const signatures = await signEach(signers, messageBytes);
 
     return swapica.connect(from).cancelMatch(messageBytes, signatures);
   }
 
-  async function executeOrder(data: ExecuteOrderRequest, from: SignerWithAddress) {
+  async function executeOrder(data: ExecuteOrderRequest, from: SignerWithAddress, signers = [signer1, signer2]) {
     const messageBytes = executeOrderBytes(data);
 
-    const signatures = await signEach([signer1, signer2], messageBytes);
+    const signatures = await signEach(signers, messageBytes);
 
     return swapica.connect(from).executeOrder(messageBytes, signatures);
-  }
-
-  async function getOrderById(id: number): Promise<OrderStruct> {
-    return orderToObject((await swapica.getAllOrders(id - 1, 1))[0]);
   }
 
   function orderToObject(order: OrderStructOutput): OrderStruct {
@@ -134,12 +132,6 @@ describe("Swapica", function () {
   });
 
   describe("#createOrder", function () {
-    const status = {
-      state: State.AWAITING_MATCH,
-      matchId: 0,
-      matchSwapica: ZERO_ADDR,
-    };
-
     let createOrderRequest: CreateOrderRequestStruct;
 
     beforeEach(async function () {
@@ -165,7 +157,7 @@ describe("Swapica", function () {
 
       await expect(tx).to.changeTokenBalances(orderToken, [orderMaker, swapica], [wei(-1), wei(1)]);
 
-      await expect(tx).to.emit(swapica, "OrderUpdated").withArgs(1, Object.values(status));
+      await expect(tx).to.emit(swapica, "OrderUpdated").withArgs(1, [State.AWAITING_MATCH, 0, ZERO_ADDR]);
     });
 
     it("should create an eth-token order properly if all conditions are met", async function () {
@@ -177,39 +169,36 @@ describe("Swapica", function () {
 
       await expect(tx).to.changeEtherBalances([orderMaker, swapica], [wei(-1), wei(1)]);
 
-      await expect(tx).to.emit(swapica, "OrderUpdated").withArgs(1, Object.values(status));
-
-      await getOrderById(1);
-
-      expect(await getOrderById(1)).to.be.deep.eq({
-        status: status,
-        orderId: 1,
-        creator: orderMaker.address,
-        ...createOrderRequest,
-      });
+      await expect(tx).to.emit(swapica, "OrderUpdated").withArgs(1, [State.AWAITING_MATCH, 0, ZERO_ADDR]);
     });
   });
 
-  context("if order created", function () {
-    beforeEach(async function () {
-      const createOrderRequest: CreateOrderRequestStruct = {
-        tokenToSell: orderToken.address,
-        amountToSell: wei(1),
-        tokenToBuy: matchToken.address,
-        amountToBuy: wei(2),
-        destinationChain: defaultChainId,
-      };
+  context("if orders are created", function () {
+    let createOrderRequests: CreateOrderRequestStruct[];
 
-      await swapica.connect(orderMaker).createOrder(createOrderRequest);
+    beforeEach(async function () {
+      createOrderRequests = [
+        {
+          tokenToSell: orderToken.address,
+          amountToSell: wei(1),
+          tokenToBuy: matchToken.address,
+          amountToBuy: wei(2),
+          destinationChain: defaultChainId,
+        },
+        {
+          tokenToSell: ETHER_ADDR,
+          amountToSell: wei(3),
+          tokenToBuy: ETHER_ADDR,
+          amountToBuy: wei(4),
+          destinationChain: defaultChainId,
+        },
+      ];
+
+      await swapica.connect(orderMaker).createOrder(createOrderRequests[0]);
+      await swapica.connect(orderMaker).createOrder(createOrderRequests[1], { value: wei(3) });
     });
 
     describe("#cancelOrder", function () {
-      const status = {
-        state: State.CANCELED,
-        matchId: 0,
-        matchSwapica: ZERO_ADDR,
-      };
-
       it("should not cancel order if a caller is not the order creator", async function () {
         await expect(swapica.cancelOrder(1)).to.be.revertedWith("Swapica: You're not a creator of the order");
       });
@@ -219,7 +208,7 @@ describe("Swapica", function () {
 
         await expect(tx).to.changeTokenBalances(orderToken, [orderMaker, swapica], [wei(1), wei(-1)]);
 
-        await expect(tx).to.emit(swapica, "OrderUpdated").withArgs(1, Object.values(status));
+        await expect(tx).to.emit(swapica, "OrderUpdated").withArgs(1, [State.CANCELED, 0, ZERO_ADDR]);
       });
 
       it("should not cancel if state is wrong", async function () {
@@ -242,6 +231,20 @@ describe("Swapica", function () {
           amountToSell: wei(2),
           originChain: defaultChainId,
         };
+      });
+
+      it("should not create match if wrong signers", async function () {
+        await expect(createMatch(createMatchRequest, matchMaker, [owner])).to.be.revertedWith(
+          "Signers: invalid signer"
+        );
+
+        await expect(createMatch(createMatchRequest, matchMaker, [signer1, signer1, signer2])).to.be.revertedWith(
+          "Signers: duplicate signers"
+        );
+
+        await expect(createMatch(createMatchRequest, matchMaker, [signer1])).to.be.revertedWith(
+          "Signers: threshold is not met"
+        );
       });
 
       it("should not create match if wrong selector", async function () {
@@ -271,19 +274,34 @@ describe("Swapica", function () {
       });
     });
 
-    context("if match created", function () {
-      beforeEach(async function () {
-        const createMatchRequest: CreateMatchRequest = {
-          selector: Selector.CREATE_MATCH,
-          chainId: defaultChainId,
-          matchSwapica: swapica.address,
-          orderId: 1,
-          tokenToSell: matchToken.address,
-          amountToSell: wei(2),
-          originChain: defaultChainId,
-        };
+    context("if matches are created", function () {
+      let createMatchRequests: CreateMatchRequest[];
 
-        await createMatch(createMatchRequest, matchMaker);
+      beforeEach(async function () {
+        createMatchRequests = [
+          {
+            selector: Selector.CREATE_MATCH,
+            chainId: defaultChainId,
+            matchSwapica: swapica.address,
+            orderId: 1,
+            tokenToSell: matchToken.address,
+            amountToSell: wei(2),
+            originChain: defaultChainId,
+          },
+          {
+            selector: Selector.CREATE_MATCH,
+            chainId: defaultChainId,
+            matchSwapica: swapica.address,
+            orderId: 2,
+            tokenToSell: ETHER_ADDR,
+            amountToSell: wei(4),
+            originChain: defaultChainId,
+          },
+        ];
+
+        for (const request of createMatchRequests) {
+          await createMatch(request, matchMaker);
+        }
       });
 
       describe("#cancelMatch", function () {
@@ -296,6 +314,20 @@ describe("Swapica", function () {
             matchSwapica: swapica.address,
             matchId: 1,
           };
+        });
+
+        it("should not cancel match if wrong signers", async function () {
+          await expect(cancelMatch(cancelMatchRequest, matchMaker, [owner])).to.be.revertedWith(
+            "Signers: invalid signer"
+          );
+
+          await expect(cancelMatch(cancelMatchRequest, matchMaker, [signer1, signer1, signer2])).to.be.revertedWith(
+            "Signers: duplicate signers"
+          );
+
+          await expect(cancelMatch(cancelMatchRequest, matchMaker, [signer1])).to.be.revertedWith(
+            "Signers: threshold is not met"
+          );
         });
 
         it("should not create match if wrong selector", async function () {
@@ -340,291 +372,288 @@ describe("Swapica", function () {
       });
 
       describe("#executeMatch", function () {
-        let executeMatchRequest: ExecuteMatchRequest;
+        let executeMatchRequests: ExecuteMatchRequest[];
 
         beforeEach(async function () {
-          executeMatchRequest = {
-            selector: Selector.EXECUTE_MATCH,
-            chainId: defaultChainId,
-            matchSwapica: swapica.address,
-            matchId: 1,
-            receiver: orderMaker.address,
-          };
+          executeMatchRequests = [
+            {
+              selector: Selector.EXECUTE_MATCH,
+              chainId: defaultChainId,
+              matchSwapica: swapica.address,
+              matchId: 1,
+              receiver: orderMaker.address,
+            },
+            {
+              selector: Selector.EXECUTE_MATCH,
+              chainId: defaultChainId,
+              matchSwapica: swapica.address,
+              matchId: 2,
+              receiver: orderMaker.address,
+            },
+          ];
+        });
+
+        it("should not execute match if cannot transfer", async function () {
+          executeMatchRequests[1].receiver = orderToken.address;
+
+          await expect(executeMatch(executeMatchRequests[1], matchMaker)).to.be.revertedWith(
+            "Swapica: Transferring failed"
+          );
+        });
+
+        it("should not execute match if wrong signers", async function () {
+          await expect(executeMatch(executeMatchRequests[0], orderMaker, [owner])).to.be.revertedWith(
+            "Signers: invalid signer"
+          );
+
+          await expect(
+            executeMatch(executeMatchRequests[0], orderMaker, [signer1, signer1, signer2])
+          ).to.be.revertedWith("Signers: duplicate signers");
+
+          await expect(executeMatch(executeMatchRequests[0], orderMaker, [signer1])).to.be.revertedWith(
+            "Signers: threshold is not met"
+          );
         });
 
         it("should not execute match if wrong selector", async function () {
-          executeMatchRequest.selector = Selector.EXECUTE_ORDER;
+          executeMatchRequests[0].selector = Selector.EXECUTE_ORDER;
 
-          await expect(executeMatch(executeMatchRequest, orderMaker)).to.be.revertedWith("Swapica: Wrong selector");
+          await expect(executeMatch(executeMatchRequests[0], orderMaker)).to.be.revertedWith("Swapica: Wrong selector");
         });
 
         it("should not execute match if wrong state", async function () {
-          await executeMatch(executeMatchRequest, orderMaker);
+          await executeMatch(executeMatchRequests[0], orderMaker);
 
-          await expect(executeMatch(executeMatchRequest, orderMaker)).to.be.revertedWith(
+          await expect(executeMatch(executeMatchRequests[0], orderMaker)).to.be.revertedWith(
             "Swapica: Match status is wrong"
           );
         });
 
         it("should not execute match if wrong chain id", async function () {
-          executeMatchRequest.chainId = 1337;
+          executeMatchRequests[0].chainId = 1337;
 
-          await expect(executeMatch(executeMatchRequest, orderMaker)).to.be.revertedWith("Swapica: Wrong chain id");
+          await expect(executeMatch(executeMatchRequests[0], orderMaker)).to.be.revertedWith("Swapica: Wrong chain id");
         });
 
         it("should not execute match if wrong swapica address", async function () {
-          executeMatchRequest.matchSwapica = ZERO_ADDR;
+          executeMatchRequests[0].matchSwapica = ZERO_ADDR;
 
-          await expect(executeMatch(executeMatchRequest, orderMaker)).to.be.revertedWith(
+          await expect(executeMatch(executeMatchRequests[0], orderMaker)).to.be.revertedWith(
             "Swapica: Wrong swapica address"
           );
         });
 
-        it("should execute match properly if all conditions are met", async function () {
-          const tx = executeMatch(executeMatchRequest, orderMaker);
+        it("should execute token match properly if all conditions are met", async function () {
+          const tx = executeMatch(executeMatchRequests[0], orderMaker);
 
           await expect(tx).to.changeTokenBalances(matchToken, [orderMaker, swapica], [wei(2), wei(-2)]);
 
           await expect(tx).to.emit(swapica, "MatchUpdated").withArgs(1, State.EXECUTED);
         });
+
+        it("should execute eth match properly if all conditions are met", async function () {
+          const tx = executeMatch(executeMatchRequests[1], orderMaker);
+
+          await expect(tx).to.changeEtherBalances([orderMaker, swapica], [wei(4), wei(-4)]);
+
+          await expect(tx).to.emit(swapica, "MatchUpdated").withArgs(2, State.EXECUTED);
+        });
       });
 
       describe("#executeOrder", function () {
-        let executeOrderRequest: ExecuteOrderRequest;
+        let executeOrderRequests: ExecuteOrderRequest[];
 
         beforeEach(async function () {
-          executeOrderRequest = {
-            selector: Selector.EXECUTE_ORDER,
-            chainId: defaultChainId,
-            orderSwapica: swapica.address,
-            orderId: 1,
-            receiver: matchMaker.address,
-            matchSwapica: swapica.address,
-            matchId: 1,
-          };
+          executeOrderRequests = [
+            {
+              selector: Selector.EXECUTE_ORDER,
+              chainId: defaultChainId,
+              orderSwapica: swapica.address,
+              orderId: 1,
+              receiver: matchMaker.address,
+              matchSwapica: swapica.address,
+              matchId: 1,
+            },
+            {
+              selector: Selector.EXECUTE_ORDER,
+              chainId: defaultChainId,
+              orderSwapica: swapica.address,
+              orderId: 2,
+              receiver: matchMaker.address,
+              matchSwapica: swapica.address,
+              matchId: 2,
+            },
+          ];
+        });
+
+        it("should not execute order if cannot transfer", async function () {
+          executeOrderRequests[1].receiver = matchToken.address;
+
+          await expect(executeOrder(executeOrderRequests[1], matchMaker)).to.be.revertedWith(
+            "Swapica: Transferring failed"
+          );
+        });
+
+        it("should not execute order if wrong signers", async function () {
+          await expect(executeOrder(executeOrderRequests[0], matchMaker, [owner])).to.be.revertedWith(
+            "Signers: invalid signer"
+          );
+
+          await expect(
+            executeOrder(executeOrderRequests[0], matchMaker, [signer1, signer1, signer2])
+          ).to.be.revertedWith("Signers: duplicate signers");
+
+          await expect(executeOrder(executeOrderRequests[0], matchMaker, [signer1])).to.be.revertedWith(
+            "Signers: threshold is not met"
+          );
         });
 
         it("should not execute order if wrong selector", async function () {
-          executeOrderRequest.selector = Selector.EXECUTE_MATCH;
+          executeOrderRequests[0].selector = Selector.EXECUTE_MATCH;
 
-          await expect(executeOrder(executeOrderRequest, matchMaker)).to.be.revertedWith("Swapica: Wrong selector");
+          await expect(executeOrder(executeOrderRequests[0], matchMaker)).to.be.revertedWith("Swapica: Wrong selector");
         });
 
         it("should not execute order if wrong state", async function () {
-          await executeOrder(executeOrderRequest, matchMaker);
+          await executeOrder(executeOrderRequests[0], matchMaker);
 
-          await expect(executeOrder(executeOrderRequest, matchMaker)).to.be.revertedWith(
+          await expect(executeOrder(executeOrderRequests[0], matchMaker)).to.be.revertedWith(
             "Swapica: Order status is wrong"
           );
         });
 
         it("should not execute match if wrong chain id", async function () {
-          executeOrderRequest.chainId = 1337;
+          executeOrderRequests[0].chainId = 1337;
 
-          await expect(executeOrder(executeOrderRequest, matchMaker)).to.be.revertedWith("Swapica: Wrong chain id");
+          await expect(executeOrder(executeOrderRequests[0], matchMaker)).to.be.revertedWith("Swapica: Wrong chain id");
         });
 
         it("should not execute order if wrong swapica address", async function () {
-          executeOrderRequest.orderSwapica = ZERO_ADDR;
+          executeOrderRequests[0].orderSwapica = ZERO_ADDR;
 
-          await expect(executeOrder(executeOrderRequest, matchMaker)).to.be.revertedWith(
+          await expect(executeOrder(executeOrderRequests[0], matchMaker)).to.be.revertedWith(
             "Swapica: Wrong swapica address"
           );
         });
 
-        it("should execute order properly if all conditions are met", async function () {
-          const tx = executeOrder(executeOrderRequest, matchMaker);
+        it("should execute token order properly if all conditions are met", async function () {
+          const tx = executeOrder(executeOrderRequests[0], matchMaker);
 
           await expect(tx).to.changeTokenBalances(orderToken, [matchMaker, swapica], [wei(1), wei(-1)]);
 
           await expect(tx).to.emit(swapica, "OrderUpdated").withArgs(1, [State.EXECUTED, 1, swapica.address]);
         });
-      });
-    });
-  });
 
-  context("if multiple orders and matches", function () {
-    let createOrderRequests: CreateOrderRequestStruct[];
-    let createMatchRequests: CreateMatchRequest[];
+        it("should execute eth order properly if all conditions are met", async function () {
+          const tx = executeOrder(executeOrderRequests[1], matchMaker);
 
-    let orders: OrderStruct[];
-    let matches: MatchStruct[];
+          await expect(tx).to.changeEtherBalances([matchMaker, swapica], [wei(3), wei(-3)]);
 
-    beforeEach(async function () {
-      createOrderRequests = [
-        {
-          tokenToSell: orderToken.address,
-          amountToSell: wei(1),
-          tokenToBuy: matchToken.address,
-          amountToBuy: wei(2),
-          destinationChain: defaultChainId,
-        },
-        {
-          tokenToSell: ETHER_ADDR,
-          amountToSell: wei(3),
-          tokenToBuy: matchToken.address,
-          amountToBuy: wei(4),
-          destinationChain: defaultChainId,
-        },
-        {
-          tokenToSell: orderToken.address,
-          amountToSell: wei(5),
-          tokenToBuy: ETHER_ADDR,
-          amountToBuy: wei(6),
-          destinationChain: defaultChainId,
-        },
-      ];
-
-      createMatchRequests = [
-        {
-          selector: Selector.CREATE_MATCH,
-          chainId: defaultChainId,
-          matchSwapica: swapica.address,
-          orderId: 1,
-          tokenToSell: matchToken.address,
-          amountToSell: wei(2),
-          originChain: defaultChainId,
-        },
-        {
-          selector: Selector.CREATE_MATCH,
-          chainId: defaultChainId,
-          matchSwapica: swapica.address,
-          orderId: 3,
-          tokenToSell: ETHER_ADDR,
-          amountToSell: wei(6),
-          originChain: defaultChainId,
-        },
-      ];
-
-      for (const request of createOrderRequests) {
-        await swapica.connect(orderMaker).createOrder(request, { value: request.amountToSell });
-      }
-
-      for (const request of createMatchRequests) {
-        await createMatch(request, matchMaker, request.amountToSell);
-      }
-
-      await swapica.connect(orderMaker).cancelOrder(2);
-
-      await executeOrder(
-        {
-          selector: Selector.EXECUTE_ORDER,
-          chainId: defaultChainId,
-          orderSwapica: swapica.address,
-          orderId: 1,
-          receiver: matchMaker.address,
-          matchSwapica: swapica.address,
-          matchId: 1,
-        },
-        matchMaker
-      );
-
-      await executeMatch(
-        {
-          selector: Selector.EXECUTE_MATCH,
-          chainId: defaultChainId,
-          matchSwapica: swapica.address,
-          matchId: 1,
-          receiver: orderMaker.address,
-        },
-        orderMaker
-      );
-
-      orders = [
-        {
-          status: {
-            state: State.EXECUTED,
-            matchId: 1,
-            matchSwapica: swapica.address,
-          },
-          orderId: 1,
-          creator: orderMaker.address,
-          ...createOrderRequests[0],
-        },
-        {
-          status: {
-            state: State.CANCELED,
-            matchId: 0,
-            matchSwapica: ZERO_ADDR,
-          },
-          orderId: 2,
-          creator: orderMaker.address,
-          ...createOrderRequests[1],
-        },
-        {
-          status: {
-            state: State.AWAITING_MATCH,
-            matchId: 0,
-            matchSwapica: ZERO_ADDR,
-          },
-          orderId: 3,
-          creator: orderMaker.address,
-          ...createOrderRequests[2],
-        },
-      ];
-
-      matches = [
-        {
-          state: State.EXECUTED,
-          matchId: 1,
-          originChainId: defaultChainId,
-          creator: matchMaker.address,
-          tokenToSell: matchToken.address,
-          amountToSell: wei(2),
-          originOrderId: 1,
-        },
-        {
-          state: State.AWAITING_FINALIZATION,
-          matchId: 2,
-          originChainId: defaultChainId,
-          creator: matchMaker.address,
-          tokenToSell: ETHER_ADDR,
-          amountToSell: wei(6),
-          originOrderId: 3,
-        },
-      ];
-    });
-
-    describe("#getUserOrders", function () {
-      it("should return whole range properly", async function () {
-        expect(ordersToObject(await swapica.getUserOrders(matchMaker.address, 0, 10))).to.be.deep.eq([]);
-        expect(ordersToObject(await swapica.getUserOrders(orderMaker.address, 0, 10))).to.be.deep.eq(orders);
+          await expect(tx).to.emit(swapica, "OrderUpdated").withArgs(2, [State.EXECUTED, 2, swapica.address]);
+        });
       });
 
-      it("should return part properly", async function () {
-        expect(ordersToObject(await swapica.getUserOrders(orderMaker.address, 0, 1))).to.be.deep.eq(orders.slice(0, 1));
-        expect(ordersToObject(await swapica.getUserOrders(orderMaker.address, 1, 2))).to.be.deep.eq(orders.slice(1, 3));
-        expect(ordersToObject(await swapica.getUserOrders(orderMaker.address, 3, 1))).to.be.deep.eq([]);
-      });
-    });
+      context("view functions", function () {
+        let orders: OrderStruct[];
+        let matches: MatchStruct[];
 
-    describe("#getUserMatches", function () {
-      it("should return whole range properly", async function () {
-        expect(matchesToObject(await swapica.getUserMatches(orderMaker.address, 0, 10))).to.be.deep.eq([]);
-        expect(matchesToObject(await swapica.getUserMatches(matchMaker.address, 0, 10))).to.be.deep.eq(matches);
-      });
+        beforeEach(async function () {
+          orders = [
+            {
+              status: {
+                state: State.AWAITING_MATCH,
+                matchId: 0,
+                matchSwapica: ZERO_ADDR,
+              },
+              orderId: 1,
+              creator: orderMaker.address,
+              ...createOrderRequests[0],
+            },
+            {
+              status: {
+                state: State.AWAITING_MATCH,
+                matchId: 0,
+                matchSwapica: ZERO_ADDR,
+              },
+              orderId: 2,
+              creator: orderMaker.address,
+              ...createOrderRequests[1],
+            },
+          ];
 
-      it("should return part properly", async function () {
-        expect(matchesToObject(await swapica.getUserMatches(matchMaker.address, 0, 1))).to.be.deep.eq(
-          matches.slice(0, 1)
-        );
-        expect(matchesToObject(await swapica.getUserMatches(matchMaker.address, 1, 1))).to.be.deep.eq(
-          matches.slice(1, 2)
-        );
-        expect(matchesToObject(await swapica.getUserMatches(matchMaker.address, 2, 1))).to.be.deep.eq([]);
-      });
-    });
+          matches = [
+            {
+              state: State.AWAITING_FINALIZATION,
+              matchId: 1,
+              originChainId: defaultChainId,
+              creator: matchMaker.address,
+              tokenToSell: matchToken.address,
+              amountToSell: wei(2),
+              originOrderId: 1,
+            },
+            {
+              state: State.AWAITING_FINALIZATION,
+              matchId: 2,
+              originChainId: defaultChainId,
+              creator: matchMaker.address,
+              tokenToSell: ETHER_ADDR,
+              amountToSell: wei(4),
+              originOrderId: 2,
+            },
+          ];
+        });
 
-    describe("#getAllOrders", function () {
-      it("should return whole range properly", async function () {
-        expect(ordersToObject(await swapica.getAllOrders(0, 10))).to.be.deep.eq(orders);
-      });
+        describe("#getUserOrders #getUserOrdersLength", function () {
+          it("should return whole range properly", async function () {
+            expect(await swapica.getUserOrdersLength(matchMaker.address)).to.be.eq(0);
+            expect(await swapica.getUserOrdersLength(orderMaker.address)).to.be.eq(2);
+            expect(ordersToObject(await swapica.getUserOrders(matchMaker.address, 0, 10))).to.be.deep.eq([]);
+            expect(ordersToObject(await swapica.getUserOrders(orderMaker.address, 0, 10))).to.be.deep.eq(orders);
+          });
 
-      it("should return part properly", async function () {
-        expect(ordersToObject(await swapica.getAllOrders(0, 1))).to.be.deep.eq(orders.slice(0, 1));
-        expect(ordersToObject(await swapica.getAllOrders(1, 1))).to.be.deep.eq(orders.slice(1, 2));
-        expect(ordersToObject(await swapica.getAllOrders(1, 2))).to.be.deep.eq(orders.slice(1, 3));
-        expect(ordersToObject(await swapica.getAllOrders(3, 2))).to.be.deep.eq([]);
+          it("should return part properly", async function () {
+            expect(ordersToObject(await swapica.getUserOrders(orderMaker.address, 0, 1))).to.be.deep.eq(
+              orders.slice(0, 1)
+            );
+            expect(ordersToObject(await swapica.getUserOrders(orderMaker.address, 1, 1))).to.be.deep.eq(
+              orders.slice(1, 2)
+            );
+            expect(ordersToObject(await swapica.getUserOrders(orderMaker.address, 2, 1))).to.be.deep.eq([]);
+          });
+        });
+
+        describe("#getUserMatches #getUserMatchesLength", function () {
+          it("should return whole range properly", async function () {
+            expect(await swapica.getUserMatchesLength(orderMaker.address)).to.be.eq(0);
+            expect(await swapica.getUserMatchesLength(matchMaker.address)).to.be.eq(2);
+            expect(matchesToObject(await swapica.getUserMatches(orderMaker.address, 0, 10))).to.be.deep.eq([]);
+            expect(matchesToObject(await swapica.getUserMatches(matchMaker.address, 0, 10))).to.be.deep.eq(matches);
+          });
+
+          it("should return part properly", async function () {
+            expect(matchesToObject(await swapica.getUserMatches(matchMaker.address, 0, 1))).to.be.deep.eq(
+              matches.slice(0, 1)
+            );
+            expect(matchesToObject(await swapica.getUserMatches(matchMaker.address, 1, 1))).to.be.deep.eq(
+              matches.slice(1, 2)
+            );
+            expect(matchesToObject(await swapica.getUserMatches(matchMaker.address, 2, 1))).to.be.deep.eq([]);
+          });
+        });
+
+        describe("#getAllOrders #getAllOrdersLength", function () {
+          it("should return whole range properly", async function () {
+            expect(await swapica.getAllOrdersLength()).to.be.eq(2);
+            expect(ordersToObject(await swapica.getAllOrders(0, 10))).to.be.deep.eq(orders);
+          });
+
+          it("should return part properly", async function () {
+            expect(ordersToObject(await swapica.getAllOrders(0, 1))).to.be.deep.eq(orders.slice(0, 1));
+            expect(ordersToObject(await swapica.getAllOrders(1, 1))).to.be.deep.eq(orders.slice(1, 2));
+            expect(ordersToObject(await swapica.getAllOrders(1, 2))).to.be.deep.eq(orders.slice(1, 3));
+            expect(ordersToObject(await swapica.getAllOrders(3, 2))).to.be.deep.eq([]);
+          });
+        });
       });
     });
   });
