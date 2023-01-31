@@ -4,7 +4,7 @@ import { ERC20Mock, Swapica } from "../generated-types/ethers";
 
 import { cancelMatchBytes, createMatchBytes, executeMatchBytes, executeOrderBytes, signEach } from "./utils/signature";
 
-import { BigNumber, BigNumberish } from "ethers";
+import { BigNumber } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { wei } from "../scripts/utils/utils";
 
