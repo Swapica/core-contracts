@@ -135,7 +135,7 @@ describe("Swapica", function () {
 
   describe("proxy functionality", function () {
     describe("#__Swapica_init", function () {
-      it("should not be initialized twice", async function () {
+      it("should not initialize twice", async function () {
         await expect(swapica.__Swapica_init([signer1.address, signer2.address])).to.be.revertedWith(
           "Initializable: contract is already initialized"
         );
@@ -162,7 +162,76 @@ describe("Swapica", function () {
     });
   });
 
-  describe("signers functionality", function () {});
+  describe("signers functionality", function () {
+    describe("#__Signers_init", function () {
+      it("should not initialize twice", async function () {
+        await expect(swapica.__Signers_init([signer1.address], 1)).to.be.revertedWith(
+          "Initializable: contract is not initializing"
+        );
+      });
+    });
+
+    describe("#setSignaturesThreshold", function () {
+      it("should not set threshold if caller is not the owner", async function () {
+        await expect(swapica.connect(signer1).setSignaturesThreshold(1)).to.be.revertedWith(
+          "Ownable: caller is not the owner"
+        );
+      });
+
+      it("should not set zero threshold", async function () {
+        await expect(swapica.setSignaturesThreshold(0)).to.be.revertedWith("Signers: invalid threshold");
+      });
+    });
+
+    describe("#addSigners", function () {
+      it("should not add signers if caller is not the owner", async function () {
+        await expect(swapica.connect(signer1).addSigners([owner.address])).to.be.revertedWith(
+          "Ownable: caller is not the owner"
+        );
+      });
+
+      it("should not add zero signers", async function () {
+        await expect(swapica.addSigners([ZERO_ADDR])).to.be.revertedWith("Signers: zero signer");
+      });
+    });
+
+    describe("#getSigners", function () {
+      it("should return signers properly", async function () {
+        expect(await swapica.getSigners()).to.be.deep.eq([signer1.address, signer2.address]);
+      });
+    });
+
+    describe("#removeSigners", async function () {
+      it("should not remove signers if caller is not the owner", async function () {
+        await expect(swapica.connect(signer1).removeSigners([signer1.address])).to.be.revertedWith(
+          "Ownable: caller is not the owner"
+        );
+      });
+
+      it("should remove signers if all conditions are met", async function () {
+        const createMatchRequest: CreateMatchRequest = {
+          selector: Selector.CREATE_MATCH,
+          chainId: defaultChainId,
+          matchSwapica: swapica.address,
+          orderId: 1,
+          tokenToSell: ETHER_ADDR,
+          amountToSell: wei(2),
+          originChain: 1,
+        };
+
+        await swapica.removeSigners([signer1.address]);
+        await swapica.setSignaturesThreshold(1);
+
+        await expect(createMatch(createMatchRequest, matchMaker, [signer1])).to.be.revertedWith(
+          "Signers: invalid signer"
+        );
+
+        await createMatch(createMatchRequest, matchMaker, [signer2]);
+
+        expect(await swapica.getUserMatchesLength(matchMaker.address)).to.be.eq(1);
+      });
+    });
+  });
 
   describe("swapica functionality", function () {
     describe("#createOrder", function () {
