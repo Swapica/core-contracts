@@ -27,6 +27,7 @@ import OrderStruct = ISwapica.OrderStruct;
 import OrderStructOutput = ISwapica.OrderStructOutput;
 import MatchStruct = ISwapica.MatchStruct;
 import MatchStructOutput = ISwapica.MatchStructOutput;
+import { describe } from "mocha";
 
 describe("Swapica", function () {
   const defaultChainId = BigNumber.from(31337);
@@ -673,7 +674,7 @@ describe("Swapica", function () {
           });
         });
 
-        context("view functions", function () {
+        describe("view functions", function () {
           let orders: OrderStruct[];
           let matches: MatchStruct[];
 
