@@ -160,6 +160,8 @@ describe("Swapica", function () {
 
       await expect(tx).to.emit(swapica, "OrderUpdated").withArgs(1, Object.values(status));
 
+      await getOrderById(1);
+
       expect(await getOrderById(1)).to.be.deep.eq({
         status: status,
         orderId: 1,
@@ -329,9 +331,58 @@ describe("Swapica", function () {
         });
       });
 
-      describe("#executeMatch #executeOrder", function () {
-        let executeOrderRequest: ExecuteOrderRequest;
+      describe("#executeMatch", function () {
         let executeMatchRequest: ExecuteMatchRequest;
+
+        beforeEach(async function () {
+          executeMatchRequest = {
+            selector: Selector.EXECUTE_MATCH,
+            chainId: defaultChainId,
+            matchSwapica: swapica.address,
+            matchId: 1,
+            receiver: orderMaker.address,
+          };
+        });
+
+        it("should not execute match if wrong selector", async function () {
+          executeMatchRequest.selector = Selector.EXECUTE_ORDER;
+
+          await expect(executeMatch(executeMatchRequest, orderMaker)).to.be.revertedWith("Swapica: Wrong selector");
+        });
+
+        it("should not execute match if wrong state", async function () {
+          await executeMatch(executeMatchRequest, orderMaker);
+
+          await expect(executeMatch(executeMatchRequest, orderMaker)).to.be.revertedWith(
+            "Swapica: Match status is wrong"
+          );
+        });
+
+        it("should not execute match if wrong chain id", async function () {
+          executeMatchRequest.chainId = 1337;
+
+          await expect(executeMatch(executeMatchRequest, orderMaker)).to.be.revertedWith("Swapica: Wrong chain id");
+        });
+
+        it("should not execute match if wrong swapica address", async function () {
+          executeMatchRequest.matchSwapica = ZERO_ADDR;
+
+          await expect(executeMatch(executeMatchRequest, orderMaker)).to.be.revertedWith(
+            "Swapica: Wrong swapica address"
+          );
+        });
+
+        it("should execute match properly if all conditions are met", async function () {
+          const tx = executeMatch(executeMatchRequest, orderMaker);
+
+          await expect(tx).to.changeTokenBalances(matchToken, [orderMaker, swapica], [wei(2), wei(-2)]);
+
+          await expect(tx).to.emit(swapica, "MatchUpdated").withArgs(1, State.EXECUTED);
+        });
+      });
+
+      describe.only("#executeOrder", function () {
+        let executeOrderRequest: ExecuteOrderRequest;
 
         beforeEach(async function () {
           executeOrderRequest = {
@@ -343,19 +394,42 @@ describe("Swapica", function () {
             matchSwapica: swapica.address,
             matchId: 1,
           };
-
-          executeMatchRequest = {
-            selector: Selector.EXECUTE_MATCH,
-            chainId: defaultChainId,
-            matchSwapica: swapica.address,
-            matchId: 1,
-            receiver: orderMaker.address,
-          };
         });
 
-        it("should execute properly if all conditions are met", async function () {
-          await executeMatch(executeMatchRequest, orderMaker);
+        it("should not execute order if wrong selector", async function () {
+          executeOrderRequest.selector = Selector.EXECUTE_MATCH;
+
+          await expect(executeOrder(executeOrderRequest, matchMaker)).to.be.revertedWith("Swapica: Wrong selector");
+        });
+
+        it("should not execute order if wrong state", async function () {
           await executeOrder(executeOrderRequest, matchMaker);
+
+          await expect(executeOrder(executeOrderRequest, matchMaker)).to.be.revertedWith(
+            "Swapica: Order status is wrong"
+          );
+        });
+
+        it("should not execute match if wrong chain id", async function () {
+          executeOrderRequest.chainId = 1337;
+
+          await expect(executeOrder(executeOrderRequest, matchMaker)).to.be.revertedWith("Swapica: Wrong chain id");
+        });
+
+        it("should not execute order if wrong swapica address", async function () {
+          executeOrderRequest.orderSwapica = ZERO_ADDR;
+
+          await expect(executeOrder(executeOrderRequest, matchMaker)).to.be.revertedWith(
+            "Swapica: Wrong swapica address"
+          );
+        });
+
+        it("should execute order properly if all conditions are met", async function () {
+          const tx = executeOrder(executeOrderRequest, matchMaker);
+
+          await expect(tx).to.changeTokenBalances(orderToken, [matchMaker, swapica], [wei(1), wei(-1)]);
+
+          await expect(tx).to.emit(swapica, "OrderUpdated").withArgs(1, [State.EXECUTED, 1, swapica.address]);
         });
       });
     });
