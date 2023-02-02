@@ -1,25 +1,31 @@
 import { BigNumber } from "ethers";
 
 export function cast(o: any): any {
-  if (Array.isArray(o)) {
-    return o.map((e) => castStruct(e));
+  if (isSolidityStructArray(o)) {
+    return o.map((e: any) => cast(e));
   }
 
-  return castStruct(o);
-}
-
-function castStruct(o: any): any {
-  const allKeys = Object.keys(o);
-
-  if (!allKeys.some((key) => !Number.isInteger(+key)) || o instanceof BigNumber) {
+  if (!isSolidityStruct(o)) {
     return o;
   }
 
-  return allKeys.reduce((prevKeys: any, currentKey: string) => {
+  return Object.keys(o).reduce((prevKeys: any, currentKey: string) => {
     if (Number.isInteger(+currentKey)) {
       return prevKeys;
     }
 
-    return { ...prevKeys, [currentKey]: castStruct(o[currentKey]) };
+    return { ...prevKeys, [currentKey]: cast(o[currentKey]) };
   }, {});
+}
+
+function isSolidityStruct(o: any): boolean {
+  return hasNonNumericProperty(o) && !(o instanceof BigNumber);
+}
+
+function isSolidityStructArray(o: any): boolean {
+  return Array.isArray(o) && o.length > 0 && !hasNonNumericProperty(o) && isSolidityStruct(o[0]);
+}
+
+function hasNonNumericProperty(o: any): boolean {
+  return Object.keys(o).some((key: string) => !Number.isInteger(+key));
 }
