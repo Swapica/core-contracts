@@ -1,25 +1,20 @@
-const setNextBlockTime = async (time) => {
-  await network.provider.send("evm_setNextBlockTimestamp", [time]);
-};
+import { network, web3 } from "hardhat";
 
-const setTime = async (time) => {
+export async function setNextBlockTime(time: any) {
+  await network.provider.send("evm_setNextBlockTimestamp", [time]);
+}
+
+export async function setTime(time: any) {
   await setNextBlockTime(time);
   await mine();
-};
+}
 
-const getCurrentBlockTime = async () => {
+export async function getCurrentBlockTime() {
   return (await web3.eth.getBlock(await web3.eth.getBlockNumber())).timestamp;
-};
+}
 
-const mine = async (numberOfBlocks = 1) => {
+export async function mine(numberOfBlocks = 1) {
   for (let i = 0; i < numberOfBlocks; i++) {
     await network.provider.send("evm_mine");
   }
-};
-
-module.exports = {
-  getCurrentBlockTime,
-  setNextBlockTime,
-  setTime,
-  mine,
-};
+}

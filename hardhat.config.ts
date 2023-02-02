@@ -1,13 +1,17 @@
-require("@nomiclabs/hardhat-web3");
-require("@nomiclabs/hardhat-truffle5");
-require("@nomicfoundation/hardhat-chai-matchers");
-require("@typechain/hardhat");
-require("hardhat-contract-sizer");
-require("hardhat-gas-reporter");
-require("solidity-coverage");
-require("@dlsl/hardhat-migrate");
+import "@nomiclabs/hardhat-web3";
+import "@nomiclabs/hardhat-truffle5";
+import "@nomiclabs/hardhat-ethers";
+import "@nomicfoundation/hardhat-chai-matchers";
+import "@typechain/hardhat";
+import "@dlsl/hardhat-migrate";
+import "hardhat-contract-sizer";
+import "hardhat-gas-reporter";
+import "solidity-coverage";
+import "@openzeppelin/hardhat-upgrades";
 
-const dotenv = require("dotenv");
+import { HardhatUserConfig } from "hardhat/config";
+
+import * as dotenv from "dotenv";
 dotenv.config();
 
 function privateKey() {
@@ -24,7 +28,7 @@ function forceTypechain() {
   return process.env.TYPECHAIN_FORCE == "true";
 }
 
-module.exports = {
+const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       initialDate: "1970-01-01T00:00:00Z",
@@ -62,7 +66,7 @@ module.exports = {
     },
   },
   solidity: {
-    version: "0.8.9",
+    version: "0.8.17",
     settings: {
       optimizer: {
         enabled: true,
@@ -102,6 +106,8 @@ module.exports = {
     target: typechainTarget(),
     alwaysGenerateOverloads: true,
     discriminateTypes: true,
-    dontOverrideCompile: true & !forceTypechain(),
+    dontOverrideCompile: !forceTypechain(),
   },
 };
+
+export default config;
