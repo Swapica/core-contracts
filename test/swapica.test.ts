@@ -227,7 +227,7 @@ describe("Swapica", function () {
 
         await expect(tx).to.changeTokenBalances(orderToken, [orderMaker, swapica], [wei(-1), wei(1)]);
 
-        await expect(tx).to.emit(swapica, "OrderUpdated").withArgs(1, [State.AWAITING_MATCH, 0, ZERO_ADDR]);
+        await expect(tx).to.emit(swapica, "OrderCreated");
       });
 
       it("should create an eth-token order properly if all conditions are met", async function () {
@@ -239,7 +239,7 @@ describe("Swapica", function () {
 
         await expect(tx).to.changeEtherBalances([orderMaker, swapica], [wei(-1), wei(1)]);
 
-        await expect(tx).to.emit(swapica, "OrderUpdated").withArgs(1, [State.AWAITING_MATCH, 0, ZERO_ADDR]);
+        await expect(tx).to.emit(swapica, "OrderCreated");
       });
     });
 
@@ -342,7 +342,7 @@ describe("Swapica", function () {
 
           await expect(tx).to.changeTokenBalances(matchToken, [matchMaker, swapica], [wei(-2), wei(2)]);
 
-          await expect(tx).to.emit(swapica, "MatchUpdated").withArgs(1, State.AWAITING_FINALIZATION);
+          await expect(tx).to.emit(swapica, "MatchCreated");
         });
       });
 

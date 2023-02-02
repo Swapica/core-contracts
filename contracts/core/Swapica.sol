@@ -24,6 +24,8 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
 
     event OrderUpdated(uint256 indexed orderId, OrderStatus status);
     event MatchUpdated(uint256 indexed matchId, State status);
+    event OrderCreated(Order order);
+    event MatchCreated(Match match_);
 
     modifier checkSignature(bytes calldata orderData, bytes[] calldata signatures) {
         _checkSignatures(keccak256(orderData), signatures);
@@ -40,24 +42,23 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
 
         uint256 orderId = _orders.length + 1;
 
-        _orders.push(
-            Order({
-                status: status,
-                orderId: orderId,
-                creator: msg.sender,
-                tokenToSell: request.tokenToSell,
-                amountToSell: request.amountToSell,
-                tokenToBuy: request.tokenToBuy,
-                amountToBuy: request.amountToBuy,
-                destinationChain: request.destinationChain
-            })
-        );
+        Order memory order = Order({
+            status: status,
+            orderId: orderId,
+            creator: msg.sender,
+            tokenToSell: request.tokenToSell,
+            amountToSell: request.amountToSell,
+            tokenToBuy: request.tokenToBuy,
+            amountToBuy: request.amountToBuy,
+            destinationChain: request.destinationChain
+        });
+
+        _orders.push(order);
 
         _userInfos[msg.sender].orderIds.push(orderId - 1);
-
         _lock(request.tokenToSell, msg.sender, request.amountToSell);
 
-        emit OrderUpdated(orderId, status);
+        emit OrderCreated(order);
     }
 
     function cancelOrder(uint256 orderId) external {
@@ -113,23 +114,22 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
 
         uint256 matchId = _matches.length + 1;
 
-        _matches.push(
-            Match({
-                state: State.AWAITING_FINALIZATION,
-                matchId: matchId,
-                originOrderId: request.orderId,
-                creator: msg.sender,
-                tokenToSell: request.tokenToSell,
-                amountToSell: request.amountToSell,
-                originChainId: request.originChain
-            })
-        );
+        Match memory match_ = Match({
+            state: State.AWAITING_FINALIZATION,
+            matchId: matchId,
+            originOrderId: request.orderId,
+            creator: msg.sender,
+            tokenToSell: request.tokenToSell,
+            amountToSell: request.amountToSell,
+            originChainId: request.originChain
+        });
+
+        _matches.push(match_);
 
         _userInfos[msg.sender].matchIds.push(matchId - 1);
-
         _lock(request.tokenToSell, msg.sender, request.amountToSell);
 
-        emit MatchUpdated(matchId, State.AWAITING_FINALIZATION);
+        emit MatchCreated(match_);
     }
 
     function cancelMatch(
