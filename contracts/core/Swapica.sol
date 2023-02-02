@@ -55,7 +55,7 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
 
         _orders.push(order);
 
-        _userInfos[msg.sender].orderIds.push(orderId - 1);
+        _userInfos[msg.sender].orderIds.push(orderId);
         _lock(request.tokenToSell, msg.sender, request.amountToSell);
 
         emit OrderCreated(order);
@@ -126,7 +126,7 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
 
         _matches.push(match_);
 
-        _userInfos[msg.sender].matchIds.push(matchId - 1);
+        _userInfos[msg.sender].matchIds.push(matchId);
         _lock(request.tokenToSell, msg.sender, request.amountToSell);
 
         emit MatchCreated(match_);
@@ -183,7 +183,7 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
         userOrders = new Order[](orderIds.length);
 
         for (uint256 i; i < userOrders.length; i++) {
-            userOrders[i] = _orders[orderIds[i]];
+            userOrders[i] = _orders[orderIds[i] - 1];
         }
     }
 
@@ -197,7 +197,7 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
         userMatches = new Match[](matchIds.length);
 
         for (uint256 i; i < userMatches.length; i++) {
-            userMatches[i] = _matches[matchIds[i]];
+            userMatches[i] = _matches[matchIds[i] - 1];
         }
     }
 
