@@ -93,7 +93,7 @@ interface ISwapica {
         address receiver;
     }
 
-    function createOrder(CreateOrderRequest memory request) external payable;
+    function createOrder(CreateOrderRequest calldata request) external payable;
 
     function cancelOrder(uint256 orderId) external;
 

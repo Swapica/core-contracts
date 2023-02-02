@@ -34,7 +34,7 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
         __Signers_init(signers, signers.length);
     }
 
-    function createOrder(CreateOrderRequest memory request) external payable override {
+    function createOrder(CreateOrderRequest calldata request) external payable override {
         OrderStatus memory status;
         status.state = State.AWAITING_MATCH;
 
