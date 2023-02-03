@@ -26,13 +26,13 @@ abstract contract Signers is ISigners, OwnableUpgradeable {
         setSignaturesThreshold(signaturesThreshold_);
     }
 
-    function setSignaturesThreshold(uint256 _signaturesThreshold) public onlyOwner {
+    function setSignaturesThreshold(uint256 _signaturesThreshold) public override onlyOwner {
         require(_signaturesThreshold > 0, "Signers: invalid threshold");
 
         signaturesThreshold = _signaturesThreshold;
     }
 
-    function addSigners(address[] calldata signers) public onlyOwner {
+    function addSigners(address[] calldata signers) public override onlyOwner {
         for (uint256 i = 0; i < signers.length; i++) {
             require(signers[i] != address(0), "Signers: zero signer");
 
@@ -40,17 +40,17 @@ abstract contract Signers is ISigners, OwnableUpgradeable {
         }
     }
 
-    function removeSigners(address[] calldata signers) public onlyOwner {
+    function removeSigners(address[] calldata signers) public override onlyOwner {
         for (uint256 i = 0; i < signers.length; i++) {
             _signers.remove(signers[i]);
         }
     }
 
-    function getSigners() external view returns (address[] memory) {
+    function getSigners() external view override returns (address[] memory) {
         return _signers.values();
     }
 
-    function _checkSignatures(bytes32 signHash, bytes[] calldata signatures) internal view {
+    function checkSignatures(bytes32 signHash, bytes[] calldata signatures) public view override {
         address[] memory signers = new address[](signatures.length);
 
         for (uint256 i = 0; i < signatures.length; i++) {

@@ -28,7 +28,7 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
     event MatchCreated(Match match_);
 
     modifier checkSignature(bytes calldata orderData, bytes[] calldata signatures) {
-        _checkSignatures(keccak256(orderData), signatures);
+        checkSignatures(keccak256(orderData), signatures);
         _;
     }
 
