@@ -470,9 +470,7 @@ describe("Swapica", function () {
           it("should not execute match if cannot transfer", async function () {
             executeMatchRequests[1].receiver = orderToken.address;
 
-            await expect(executeMatch(executeMatchRequests[1], matchMaker)).to.be.revertedWith(
-              "Swapica: Transferring failed"
-            );
+            await expect(executeMatch(executeMatchRequests[1], matchMaker)).to.be.revertedWith("Transferring failed");
           });
 
           it("should not execute match if wrong signers", async function () {
@@ -567,9 +565,7 @@ describe("Swapica", function () {
           it("should not execute order if cannot transfer", async function () {
             executeOrderRequests[1].receiver = matchToken.address;
 
-            await expect(executeOrder(executeOrderRequests[1], matchMaker)).to.be.revertedWith(
-              "Swapica: Transferring failed"
-            );
+            await expect(executeOrder(executeOrderRequests[1], matchMaker)).to.be.revertedWith("Transferring failed");
           });
 
           it("should not execute order if wrong signers", async function () {

@@ -12,7 +12,7 @@ library TokenBalance {
     function sendFunds(address token, address receiver, uint256 amount) internal {
         if (token == ETHEREUM_ADDRESS) {
             (bool status, ) = receiver.call{value: amount}("");
-            require(status, "TB: Failed to transfer");
+            require(status, "Transferring failed");
         } else {
             IERC20(token).safeTransfer(receiver, amount);
         }
