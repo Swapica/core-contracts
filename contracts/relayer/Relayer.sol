@@ -50,5 +50,7 @@ contract Relayer is IRelayer, OwnableUpgradeable, UUPSUpgradeable {
         }
     }
 
+    receive() external payable {}
+
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }
