@@ -36,7 +36,6 @@ contract Relayer is IRelayer, OwnableUpgradeable, UUPSUpgradeable {
         uint256 balanceBefore = executeParameters.token.thisBalance();
 
         (bool status, bytes memory returnedData) = coreAddress.call(executeParameters.coreData);
-
         require(status, returnedData.getRevertMsg());
 
         uint256 balanceAfter = executeParameters.token.thisBalance();
