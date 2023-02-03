@@ -24,10 +24,6 @@ contract Relayer is IRelayer, OwnableUpgradeable, UUPSUpgradeable {
         coreAddress = _coreAddress;
     }
 
-    constructor(address _coreAddress) {
-        coreAddress = _coreAddress;
-    }
-
     function execute(bytes calldata data, bytes[] calldata signatures) external override {
         ISigners(coreAddress).checkSignatures(keccak256(data), signatures);
 
