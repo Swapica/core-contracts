@@ -29,6 +29,8 @@ contract Relayer is IRelayer, OwnableUpgradeable, UUPSUpgradeable {
 
         ExecuteParameters memory executeParameters = abi.decode(data, (ExecuteParameters));
 
+        require(executeParameters.commission <= PERCENTAGE_100, "Relayer: commission > 100%");
+
         uint256 balanceBefore = executeParameters.token.thisBalance();
 
         (bool status, bytes memory returnedData) = coreAddress.call(executeParameters.coreData);

@@ -41,7 +41,15 @@ describe("Swapica", function () {
   let signer1: SignerWithAddress;
   let signer2: SignerWithAddress;
 
-  async function createMatch(data: CreateMatchRequest, from: SignerWithAddress, signers = [signer1, signer2]) {
+  async function createOrder(data: CreateOrderRequestStruct, from: SignerWithAddress) {
+    return swapica.connect(from).createOrder(data, { value: data.tokenToSell == ETHER_ADDR ? data.amountToSell : 0 });
+  }
+
+  async function createMatch(
+    data: CreateMatchRequest,
+    from: SignerWithAddress,
+    signers: SignerWithAddress[] = [signer1, signer2]
+  ) {
     const messageBytes = createMatchBytes(data);
 
     const signatures = await signEach(signers, messageBytes);
@@ -51,7 +59,11 @@ describe("Swapica", function () {
       .createMatch(messageBytes, signatures, { value: data.tokenToSell == ETHER_ADDR ? data.amountToSell : 0 });
   }
 
-  async function executeMatch(data: ExecuteMatchRequest, from: SignerWithAddress, signers = [signer1, signer2]) {
+  async function executeMatch(
+    data: ExecuteMatchRequest,
+    from: SignerWithAddress,
+    signers: SignerWithAddress[] = [signer1, signer2]
+  ) {
     const messageBytes = executeMatchBytes(data);
 
     const signatures = await signEach(signers, messageBytes);
@@ -59,7 +71,11 @@ describe("Swapica", function () {
     return swapica.connect(from).executeMatch(messageBytes, signatures);
   }
 
-  async function cancelMatch(data: CancelMatchRequest, from: SignerWithAddress, signers = [signer1, signer2]) {
+  async function cancelMatch(
+    data: CancelMatchRequest,
+    from: SignerWithAddress,
+    signers: SignerWithAddress[] = [signer1, signer2]
+  ) {
     const messageBytes = cancelMatchBytes(data);
 
     const signatures = await signEach(signers, messageBytes);
@@ -67,7 +83,11 @@ describe("Swapica", function () {
     return swapica.connect(from).cancelMatch(messageBytes, signatures);
   }
 
-  async function executeOrder(data: ExecuteOrderRequest, from: SignerWithAddress, signers = [signer1, signer2]) {
+  async function executeOrder(
+    data: ExecuteOrderRequest,
+    from: SignerWithAddress,
+    signers: SignerWithAddress[] = [signer1, signer2]
+  ) {
     const messageBytes = executeOrderBytes(data);
 
     const signatures = await signEach(signers, messageBytes);
@@ -223,7 +243,7 @@ describe("Swapica", function () {
       });
 
       it("should create a token-token order properly if all conditions are met", async function () {
-        const tx = swapica.connect(orderMaker).createOrder(createOrderRequest);
+        const tx = createOrder(createOrderRequest, orderMaker);
 
         await expect(tx).to.changeTokenBalances(orderToken, [orderMaker, swapica], [wei(-1), wei(1)]);
 
@@ -233,9 +253,7 @@ describe("Swapica", function () {
       it("should create an eth-token order properly if all conditions are met", async function () {
         createOrderRequest.tokenToSell = ETHER_ADDR;
 
-        const tx = swapica
-          .connect(orderMaker)
-          .createOrder(createOrderRequest, { value: createOrderRequest.amountToSell });
+        const tx = createOrder(createOrderRequest, orderMaker);
 
         await expect(tx).to.changeEtherBalances([orderMaker, swapica], [wei(-1), wei(1)]);
 
@@ -264,12 +282,13 @@ describe("Swapica", function () {
           },
         ];
 
-        await swapica.connect(orderMaker).createOrder(createOrderRequests[0]);
-        await swapica.connect(orderMaker).createOrder(createOrderRequests[1], { value: wei(3) });
+        for (const request of createOrderRequests) {
+          await createOrder(request, orderMaker);
+        }
       });
 
       describe("#cancelOrder", function () {
-        it("should not cancel order if a caller is not the order creator", async function () {
+        it("should not cancel order if caller is not the order creator", async function () {
           await expect(swapica.cancelOrder(1)).to.be.revertedWith("Swapica: You're not a creator of the order");
         });
 
