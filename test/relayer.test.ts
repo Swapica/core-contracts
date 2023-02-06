@@ -137,7 +137,7 @@ describe.only("Relayer", function () {
     context("if orders and matches are created", function () {
       beforeEach(async function () {});
 
-      it.only("init", async function () {
+      it("init", async function () {
         const createOrderRequest: CreateOrderRequestStruct = {
           tokenToSell: orderToken.address,
           amountToSell: wei(1),
@@ -159,13 +159,17 @@ describe.only("Relayer", function () {
         await swapica.connect(orderMaker).createOrder(createOrderRequest);
 
         const executeParameters: ExecuteParameters = {
-          token: matchToken.address,
+          token: orderToken.address,
           commission: PERCENTAGE_100.div(2),
-          receiver: orderMaker.address,
+          receiver: matchMaker.address,
           coreData: await getExecuteOrderCallData(executeOrderRequest),
         };
 
-        await execute(executeParameters, orderMaker);
+        await execute(executeParameters, matchMaker);
+
+        console.log((await orderToken.balanceOf(matchMaker.address)).toString());
+        console.log((await orderToken.balanceOf(relayer.address)).toString());
+        console.log((await orderToken.balanceOf(swapica.address)).toString());
       });
     });
   });
