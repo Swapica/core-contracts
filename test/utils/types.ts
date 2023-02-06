@@ -49,3 +49,10 @@ export interface ExecuteMatchRequest {
   matchId: BigNumberish;
   receiver: string;
 }
+
+export interface ExecuteParameters {
+  token: string;
+  commission: BigNumberish;
+  receiver: string;
+  coreData: string;
+}

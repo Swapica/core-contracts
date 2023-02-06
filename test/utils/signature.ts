@@ -1,6 +1,12 @@
 import { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { CancelMatchRequest, CreateMatchRequest, ExecuteMatchRequest, ExecuteOrderRequest } from "./types";
+import {
+  CancelMatchRequest,
+  CreateMatchRequest,
+  ExecuteMatchRequest,
+  ExecuteOrderRequest,
+  ExecuteParameters,
+} from "./types";
 
 export function executeOrderBytes(data: ExecuteOrderRequest): string {
   return ethers.utils.defaultAbiCoder.encode(
@@ -35,6 +41,13 @@ export function executeMatchBytes(data: ExecuteMatchRequest): string {
   return ethers.utils.defaultAbiCoder.encode(
     ["uint8", "uint256", "address", "uint256", "address"],
     [data.selector, data.chainId, data.matchSwapica, data.matchId, data.receiver]
+  );
+}
+
+export function executeBytes(data: ExecuteParameters): string {
+  return ethers.utils.defaultAbiCoder.encode(
+    ["address", "uint256", "address", "bytes"],
+    [data.token, data.commission, data.receiver, data.coreData]
   );
 }
 
