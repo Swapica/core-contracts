@@ -17,13 +17,13 @@ abstract contract Signers is ISigners, OwnableUpgradeable {
     EnumerableSet.AddressSet internal _signers;
 
     function __Signers_init(
-        address[] calldata signers_,
-        uint256 signaturesThreshold_
+        address[] calldata signers,
+        uint256 _signaturesThreshold
     ) public onlyInitializing {
         __Ownable_init();
 
-        addSigners(signers_);
-        setSignaturesThreshold(signaturesThreshold_);
+        addSigners(signers);
+        setSignaturesThreshold(_signaturesThreshold);
     }
 
     function setSignaturesThreshold(uint256 _signaturesThreshold) public override onlyOwner {
