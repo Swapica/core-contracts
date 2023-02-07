@@ -743,6 +743,20 @@ describe("Swapica", function () {
               expect(cast(await swapica.getAllOrders(3, 2))).to.be.deep.eq([]);
             });
           });
+
+          describe("#getAllMatches #getAllMatchesLength", function () {
+            it("should return whole range properly", async function () {
+              expect(await swapica.getAllMatchesLength()).to.be.eq(2);
+              expect(cast(await swapica.getAllMatches(0, 10))).to.be.deep.eq(matches);
+            });
+
+            it("should return part properly", async function () {
+              expect(cast(await swapica.getAllMatches(0, 1))).to.be.deep.eq(matches.slice(0, 1));
+              expect(cast(await swapica.getAllMatches(1, 1))).to.be.deep.eq(matches.slice(1, 2));
+              expect(cast(await swapica.getAllMatches(1, 2))).to.be.deep.eq(matches.slice(1, 3));
+              expect(cast(await swapica.getAllMatches(3, 2))).to.be.deep.eq([]);
+            });
+          });
         });
       });
     });
