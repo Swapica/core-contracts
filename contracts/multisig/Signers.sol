@@ -66,7 +66,7 @@ abstract contract Signers is ISigners, OwnableUpgradeable {
         for (uint256 i = 0; i < signers.length; i++) {
             require(_signers.contains(signers[i]), "Signers: invalid signer");
 
-            uint256 bitKey = 2 ** (uint256(uint160(signers[i])) >> 152);
+            uint256 bitKey = 1 << (uint256(uint160(signers[i])) >> 152);
 
             require(bitMap & bitKey == 0, "Signers: duplicate signers");
 
