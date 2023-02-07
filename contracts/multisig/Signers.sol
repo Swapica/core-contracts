@@ -17,22 +17,22 @@ abstract contract Signers is ISigners, OwnableUpgradeable {
     EnumerableSet.AddressSet internal _signers;
 
     function __Signers_init(
-        address[] calldata signers_,
-        uint256 signaturesThreshold_
+        address[] calldata signers,
+        uint256 _signaturesThreshold
     ) public onlyInitializing {
         __Ownable_init();
 
-        addSigners(signers_);
-        setSignaturesThreshold(signaturesThreshold_);
+        addSigners(signers);
+        setSignaturesThreshold(_signaturesThreshold);
     }
 
-    function setSignaturesThreshold(uint256 _signaturesThreshold) public onlyOwner {
+    function setSignaturesThreshold(uint256 _signaturesThreshold) public override onlyOwner {
         require(_signaturesThreshold > 0, "Signers: invalid threshold");
 
         signaturesThreshold = _signaturesThreshold;
     }
 
-    function addSigners(address[] calldata signers) public onlyOwner {
+    function addSigners(address[] calldata signers) public override onlyOwner {
         for (uint256 i = 0; i < signers.length; i++) {
             require(signers[i] != address(0), "Signers: zero signer");
 
@@ -40,17 +40,17 @@ abstract contract Signers is ISigners, OwnableUpgradeable {
         }
     }
 
-    function removeSigners(address[] calldata signers) public onlyOwner {
+    function removeSigners(address[] calldata signers) public override onlyOwner {
         for (uint256 i = 0; i < signers.length; i++) {
             _signers.remove(signers[i]);
         }
     }
 
-    function getSigners() external view returns (address[] memory) {
+    function getSigners() external view override returns (address[] memory) {
         return _signers.values();
     }
 
-    function _checkSignatures(bytes32 signHash, bytes[] calldata signatures) internal view {
+    function checkSignatures(bytes32 signHash, bytes[] calldata signatures) public view override {
         address[] memory signers = new address[](signatures.length);
 
         for (uint256 i = 0; i < signatures.length; i++) {
@@ -66,7 +66,7 @@ abstract contract Signers is ISigners, OwnableUpgradeable {
         for (uint256 i = 0; i < signers.length; i++) {
             require(_signers.contains(signers[i]), "Signers: invalid signer");
 
-            uint256 bitKey = 2 ** (uint256(uint160(signers[i])) >> 152);
+            uint256 bitKey = 1 << (uint256(uint160(signers[i])) >> 152);
 
             require(bitMap & bitKey == 0, "Signers: duplicate signers");
 

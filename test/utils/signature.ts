@@ -1,40 +1,49 @@
 import { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { CancelMatchRequest, CreateMatchRequest, ExecuteMatchRequest, ExecuteOrderRequest } from "./types";
+import {
+  CancelMatchRequest,
+  CreateMatchRequest,
+  ExecuteMatchRequest,
+  ExecuteOrderRequest,
+  ExecuteParameters,
+} from "./types";
 
 export function executeOrderBytes(data: ExecuteOrderRequest): string {
   return ethers.utils.defaultAbiCoder.encode(
-    ["uint8", "uint256", "address", "uint256", "address", "address", "uint256"],
-    [data.selector, data.chainId, data.orderSwapica, data.orderId, data.receiver, data.matchSwapica, data.matchId]
+    [
+      "tuple(uint8 selector, uint256 chainId, address orderSwapica, uint256 orderId, address receiver, address matchSwapica, uint256 matchId)",
+    ],
+    [data]
   );
 }
 
 export function createMatchBytes(data: CreateMatchRequest): string {
   return ethers.utils.defaultAbiCoder.encode(
-    ["uint8", "uint256", "address", "uint256", "address", "uint256", "uint256"],
     [
-      data.selector,
-      data.chainId,
-      data.matchSwapica,
-      data.orderId,
-      data.tokenToSell,
-      data.amountToSell,
-      data.originChain,
-    ]
+      "tuple(uint8 selector, uint256 chainId, address matchSwapica, uint256 orderId, address tokenToSell, uint256 amountToSell, uint256 originChain)",
+    ],
+    [data]
   );
 }
 
 export function cancelMatchBytes(data: CancelMatchRequest): string {
   return ethers.utils.defaultAbiCoder.encode(
-    ["uint8", "uint256", "address", "uint256"],
-    [data.selector, data.chainId, data.matchSwapica, data.matchId]
+    ["tuple(uint8 selector, uint256 chainId, address matchSwapica, uint256 matchId)"],
+    [data]
   );
 }
 
 export function executeMatchBytes(data: ExecuteMatchRequest): string {
   return ethers.utils.defaultAbiCoder.encode(
-    ["uint8", "uint256", "address", "uint256", "address"],
-    [data.selector, data.chainId, data.matchSwapica, data.matchId, data.receiver]
+    ["tuple(uint8 selector, uint256 chainId, address matchSwapica, uint256 matchId, address receiver)"],
+    [data]
+  );
+}
+
+export function executeBytes(data: ExecuteParameters): string {
+  return ethers.utils.defaultAbiCoder.encode(
+    ["tuple(address token, uint256 commission, address receiver, bytes coreData)"],
+    [data]
   );
 }
 

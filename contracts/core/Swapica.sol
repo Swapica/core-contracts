@@ -8,14 +8,14 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@dlsl/dev-modules/libs/arrays/Paginator.sol";
 
 import "../interfaces/core/ISwapica.sol";
-
-import "./Globals.sol";
 import "../multisig/Signers.sol";
+import "../libs/TokenBalance.sol";
 
 contract Swapica is ISwapica, UUPSUpgradeable, Signers {
     using Paginator for uint256[];
     using Math for uint256;
     using SafeERC20 for IERC20;
+    using TokenBalance for address;
 
     Order[] internal _orders;
     Match[] internal _matches;
@@ -28,7 +28,7 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
     event MatchCreated(Match match_);
 
     modifier checkSignature(bytes calldata orderData, bytes[] calldata signatures) {
-        _checkSignatures(keccak256(orderData), signatures);
+        checkSignatures(keccak256(orderData), signatures);
         _;
     }
 
@@ -241,12 +241,7 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
     function _release(address token, address from, address to, uint256 amount) internal {
         _userInfos[from].lockedAmount[token] -= amount;
 
-        if (token == ETHEREUM_ADDRESS) {
-            (bool ok, ) = to.call{value: amount}("");
-            require(ok, "Swapica: Transferring failed");
-        } else {
-            IERC20(token).safeTransfer(to, amount);
-        }
+        token.sendFunds(to, amount);
     }
 
     function _checkSignatureRecipient(uint256 chainId, address swapicaAddress) private view {

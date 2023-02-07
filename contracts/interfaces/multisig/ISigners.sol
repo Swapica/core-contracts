@@ -11,4 +11,6 @@ interface ISigners {
     function removeSigners(address[] calldata signers) external;
 
     function getSigners() external view returns (address[] memory);
+
+    function checkSignatures(bytes32 signHash, bytes[] calldata signatures) external view;
 }
