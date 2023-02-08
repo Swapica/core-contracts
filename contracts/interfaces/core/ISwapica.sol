@@ -122,9 +122,16 @@ interface ISwapica {
         uint256 limit
     ) external view returns (Order[] memory allOrders);
 
+    function getAllMatches(
+        uint256 offset,
+        uint256 limit
+    ) external view returns (Match[] memory allMatches);
+
     function getUserOrdersLength(address user) external view returns (uint256);
 
     function getUserMatchesLength(address user) external view returns (uint256);
 
     function getAllOrdersLength() external view returns (uint256);
+
+    function getAllMatchesLength() external view returns (uint256);
 }

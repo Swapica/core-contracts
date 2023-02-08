@@ -214,6 +214,19 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
         }
     }
 
+    function getAllMatches(
+        uint256 offset,
+        uint256 limit
+    ) external view override returns (Match[] memory allMatches) {
+        uint256 to = (offset + limit).min(_matches.length).max(offset);
+
+        allMatches = new Match[](to - offset);
+
+        for (uint256 i = offset; i < to; i++) {
+            allMatches[i - offset] = _matches[i];
+        }
+    }
+
     function getUserOrdersLength(address user) external view override returns (uint256) {
         return _userInfos[user].orderIds.length;
     }
@@ -224,6 +237,10 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
 
     function getAllOrdersLength() external view override returns (uint256) {
         return _orders.length;
+    }
+
+    function getAllMatchesLength() external view override returns (uint256) {
+        return _matches.length;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}

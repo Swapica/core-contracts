@@ -33,5 +33,10 @@ export = async (deployer: Deployer, logger: Logger) => {
     "Transfer Ownership"
   );
 
-  logger.logContracts(["Swapica implementation", swapica.address], ["Swapica proxy", proxySwapica.address]);
+  logger.logContracts(
+    ["Swapica implementation", swapica.address],
+    ["Swapica proxy", proxySwapica.address],
+    ["Relayer implementation", relayer.address],
+    ["Relayer proxy", proxyRelayer.address]
+  );
 };
