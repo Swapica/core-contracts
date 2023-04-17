@@ -43,6 +43,16 @@ const config: HardhatUserConfig = {
       accounts: privateKey(),
       gasMultiplier: 1.2,
     },
+    sepolia: {
+      url: `https://sepolia.infura.io/v3/${process.env.INFURA_KEY}`,
+      accounts: privateKey(),
+      gasMultiplier: 1.2,
+    },
+    q_testnet: {
+      url: `https://rpc.qtestnet.org`,
+      accounts: privateKey(),
+      gasMultiplier: 1.2,
+    },
     chapel: {
       url: "https://data-seed-prebsc-1-s1.binance.org:8545",
       accounts: privateKey(),
@@ -57,10 +67,9 @@ const config: HardhatUserConfig = {
     eth_mainnet: {
       url: `https://mainnet.infura.io/v3/${process.env.INFURA_KEY}`,
       accounts: privateKey(),
-      gasMultiplier: 1.2,
     },
     avalanche_fuji_testnet: {
-      url: `https://endpoints.omniatech.io/v1/avax/fuji/public`,
+      url: `https://avalanche-fuji.infura.io/v3/${process.env.INFURA_KEY}`,
       accounts: privateKey(),
       gasMultiplier: 1.2,
     },
@@ -78,10 +87,22 @@ const config: HardhatUserConfig = {
     apiKey: {
       mainnet: `${process.env.ETHERSCAN_KEY}`,
       goerli: `${process.env.ETHERSCAN_KEY}`,
+      sepolia: `${process.env.ETHERSCAN_KEY}`,
       bsc: `${process.env.BSCSCAN_KEY}`,
       bscTestnet: `${process.env.BSCSCAN_KEY}`,
-      avalancheFujiTestnet: `${process.env.FUJI_KEY}`,
+      avalancheFujiTestnet: `${process.env.AVALANCHE_KEY}`,
+      q_testnet: "abc",
     },
+    customChains: [
+      {
+        network: "q_testnet",
+        chainId: 35443,
+        urls: {
+          apiURL: "https://explorer.qtestnet.org/api",
+          browserURL: "https://explorer.qtestnet.org",
+        },
+      },
+    ],
   },
   migrate: {
     pathToMigrations: "./deploy/",
@@ -98,7 +119,7 @@ const config: HardhatUserConfig = {
   gasReporter: {
     currency: "USD",
     gasPrice: 50,
-    enabled: false,
+    enabled: true,
     coinmarketcap: `${process.env.COINMARKETCAP_KEY}`,
   },
   typechain: {
