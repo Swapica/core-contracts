@@ -197,6 +197,7 @@ describe("Swapica", function () {
 
       it("should remove signers if all conditions are met", async function () {
         const createMatchRequest: CreateMatchRequest = {
+          useRelayer: true,
           selector: Selector.CREATE_MATCH,
           chainId: defaultChainId,
           matchSwapica: swapica.address,
@@ -226,6 +227,7 @@ describe("Swapica", function () {
 
       beforeEach(async function () {
         createOrderRequest = {
+          useRelayer: true,
           tokenToSell: orderToken.address,
           amountToSell: wei(1),
           tokenToBuy: matchToken.address,
@@ -247,7 +249,7 @@ describe("Swapica", function () {
 
         await expect(tx).to.changeTokenBalances(orderToken, [orderMaker, swapica], [wei(-1), wei(1)]);
 
-        await expect(tx).to.emit(swapica, "OrderCreated");
+        await expect(tx).to.emit(swapica, "OrderCreated").withArgs([], true);
       });
 
       it("should create an eth-token order properly if all conditions are met", async function () {
@@ -257,7 +259,7 @@ describe("Swapica", function () {
 
         await expect(tx).to.changeEtherBalances([orderMaker, swapica], [wei(-1), wei(1)]);
 
-        await expect(tx).to.emit(swapica, "OrderCreated");
+        await expect(tx).to.emit(swapica, "OrderCreated").withArgs([], true);
       });
     });
 
@@ -267,6 +269,7 @@ describe("Swapica", function () {
       beforeEach(async function () {
         createOrderRequests = [
           {
+            useRelayer: false,
             tokenToSell: orderToken.address,
             amountToSell: wei(1),
             tokenToBuy: matchToken.address,
@@ -274,6 +277,7 @@ describe("Swapica", function () {
             destinationChain: defaultChainId,
           },
           {
+            useRelayer: true,
             tokenToSell: ETHER_ADDR,
             amountToSell: wei(3),
             tokenToBuy: ETHER_ADDR,
@@ -312,6 +316,7 @@ describe("Swapica", function () {
 
         beforeEach(async function () {
           createMatchRequest = {
+            useRelayer: true,
             selector: Selector.CREATE_MATCH,
             chainId: defaultChainId,
             matchSwapica: swapica.address,
@@ -361,7 +366,20 @@ describe("Swapica", function () {
 
           await expect(tx).to.changeTokenBalances(matchToken, [matchMaker, swapica], [wei(-2), wei(2)]);
 
-          await expect(tx).to.emit(swapica, "MatchCreated");
+          await expect(tx)
+            .to.emit(swapica, "MatchCreated")
+            .withArgs(
+              [
+                State.AWAITING_FINALIZATION,
+                1,
+                createMatchRequest.orderId,
+                matchMaker.address,
+                createMatchRequest.tokenToSell,
+                createMatchRequest.amountToSell,
+                createMatchRequest.originChain,
+              ],
+              true
+            );
         });
       });
 
@@ -371,6 +389,7 @@ describe("Swapica", function () {
         beforeEach(async function () {
           createMatchRequests = [
             {
+              useRelayer: false,
               selector: Selector.CREATE_MATCH,
               chainId: defaultChainId,
               matchSwapica: swapica.address,
@@ -380,6 +399,7 @@ describe("Swapica", function () {
               originChain: defaultChainId,
             },
             {
+              useRelayer: true,
               selector: Selector.CREATE_MATCH,
               chainId: defaultChainId,
               matchSwapica: swapica.address,
@@ -664,7 +684,11 @@ describe("Swapica", function () {
                 },
                 orderId: 1,
                 creator: orderMaker.address,
-                ...createOrderRequests[0],
+                tokenToSell: createOrderRequests[0].tokenToSell,
+                amountToSell: createOrderRequests[0].amountToSell,
+                tokenToBuy: createOrderRequests[0].tokenToBuy,
+                amountToBuy: createOrderRequests[0].amountToBuy,
+                destinationChain: createOrderRequests[0].destinationChain,
               },
               {
                 status: {
@@ -674,7 +698,11 @@ describe("Swapica", function () {
                 },
                 orderId: 2,
                 creator: orderMaker.address,
-                ...createOrderRequests[1],
+                tokenToSell: createOrderRequests[1].tokenToSell,
+                amountToSell: createOrderRequests[1].amountToSell,
+                tokenToBuy: createOrderRequests[1].tokenToBuy,
+                amountToBuy: createOrderRequests[1].amountToBuy,
+                destinationChain: createOrderRequests[1].destinationChain,
               },
             ];
 

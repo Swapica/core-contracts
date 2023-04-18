@@ -26,6 +26,7 @@ export interface ExecuteOrderRequest {
 }
 
 export interface CreateMatchRequest {
+  useRelayer: boolean;
   selector: Selector;
   chainId: BigNumberish;
   matchSwapica: string;

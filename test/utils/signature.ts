@@ -20,7 +20,7 @@ export function executeOrderBytes(data: ExecuteOrderRequest): string {
 export function createMatchBytes(data: CreateMatchRequest): string {
   return ethers.utils.defaultAbiCoder.encode(
     [
-      "tuple(uint8 selector, uint256 chainId, address matchSwapica, uint256 orderId, address tokenToSell, uint256 amountToSell, uint256 originChain)",
+      "tuple(bool useRelayer, uint8 selector, uint256 chainId, address matchSwapica, uint256 orderId, address tokenToSell, uint256 amountToSell, uint256 originChain)",
     ],
     [data]
   );

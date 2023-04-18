@@ -51,6 +51,7 @@ interface ISwapica {
     }
 
     struct CreateOrderRequest {
+        bool useRelayer;
         address tokenToSell;
         uint256 amountToSell;
         address tokenToBuy;
@@ -69,6 +70,7 @@ interface ISwapica {
     }
 
     struct CreateMatchRequest {
+        bool useRelayer;
         Selector selector;
         uint256 chainId;
         address matchSwapica;

@@ -24,8 +24,8 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
 
     event OrderUpdated(uint256 indexed orderId, OrderStatus status);
     event MatchUpdated(uint256 indexed matchId, State status);
-    event OrderCreated(Order order);
-    event MatchCreated(Match match_);
+    event OrderCreated(Order order, bool useRelayer);
+    event MatchCreated(Match match_, bool useRelayer);
 
     modifier checkSignature(bytes calldata orderData, bytes[] calldata signatures) {
         checkSignatures(keccak256(orderData), signatures);
@@ -58,7 +58,7 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
         _userInfos[msg.sender].orderIds.push(orderId);
         _lock(request.tokenToSell, msg.sender, request.amountToSell);
 
-        emit OrderCreated(order);
+        emit OrderCreated(order, request.useRelayer);
     }
 
     function cancelOrder(uint256 orderId) external {
@@ -129,7 +129,7 @@ contract Swapica is ISwapica, UUPSUpgradeable, Signers {
         _userInfos[msg.sender].matchIds.push(matchId);
         _lock(request.tokenToSell, msg.sender, request.amountToSell);
 
-        emit MatchCreated(match_);
+        emit MatchCreated(match_, request.useRelayer);
     }
 
     function cancelMatch(
