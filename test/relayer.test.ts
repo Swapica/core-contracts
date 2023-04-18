@@ -154,6 +154,7 @@ describe("Relayer", function () {
     beforeEach(async function () {
       createOrderRequests = [
         {
+          useRelayer: true,
           tokenToSell: orderToken.address,
           amountToSell: wei(1),
           tokenToBuy: matchToken.address,
@@ -161,6 +162,7 @@ describe("Relayer", function () {
           destinationChain: defaultChainId,
         },
         {
+          useRelayer: true,
           tokenToSell: ETHER_ADDR,
           amountToSell: wei(3),
           tokenToBuy: ETHER_ADDR,
@@ -171,6 +173,7 @@ describe("Relayer", function () {
 
       createMatchRequests = [
         {
+          useRelayer: true,
           selector: Selector.CREATE_MATCH,
           chainId: defaultChainId,
           matchSwapica: swapica.address,
@@ -180,6 +183,7 @@ describe("Relayer", function () {
           originChain: defaultChainId,
         },
         {
+          useRelayer: true,
           selector: Selector.CREATE_MATCH,
           chainId: defaultChainId,
           matchSwapica: swapica.address,
