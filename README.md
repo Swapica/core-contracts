@@ -1,7 +1,7 @@
 # Swapica contracts
 
 This repository contains Swapica core contracts. All contracts are managed and indexed by backend services using EIP-712 standard signatures.
-- `./contracts/core/Swapica.sol` Swapica contract, which allows creating, executing, and canceling orders and matches.
+- `./contracts/core/Swapica.sol` *Swapica contract, which allows creating, executing, and canceling orders and matches.
 - `./contracts/relayer/Relayer.sol` Relayer contract that facilitates the orders matching by executing executeOrder and executeMatch methods on the Swapica contract. The Relayer is optional, and it charges set fees from users for this service.
 
 ## Overview
@@ -19,7 +19,7 @@ $ npm run test
 ```
 
 ### Deployment
-To deploy contracts, first configure `./.env` based on the `./.env.example` file. After that, you can run the migration script with the desired network (see `./packge.json` scripts):
+To deploy contracts, first configure `./.env` based on the `./.env.example` file. After that, you can run the migration script with the desired network (see `./package.json` scripts):
 
 ```console
 $ npm run deploy-sepolia
