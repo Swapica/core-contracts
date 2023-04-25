@@ -1,6 +1,6 @@
 # Swapica contracts
 
-This repository contains Swapica core contracts. All contracts are managed and indexed by backend services using EIP-712 standard signatures.
+This repository contains Swapica core contracts. All contracts are managed and indexed by backend services using modified EIP-191 standard signatures.
 - `./contracts/core/Swapica.sol` Swapica contract, which allows creating, executing, and canceling orders and matches.
 - `./contracts/relayer/Relayer.sol` Relayer contract that facilitates the orders matching by executing executeOrder and executeMatch methods on the Swapica contract. The Relayer is optional, and it charges set fees from users for this service.
 
