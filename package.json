@@ -22,6 +22,7 @@
     "deploy-chapel": "npx hardhat migrate --confirmations 1 --verify --network chapel",
     "deploy-q-testnet": "npx hardhat migrate --confirmations 1 --verify --attempts 3 --network q_testnet",
     "deploy-fuji": "npx hardhat migrate --confirmations 5 --verify --network avalanche_fuji_testnet",
+    "deploy-avalanche": "npx hardhat migrate --confirmations 5 --verify --network avalanche",
     "deploy-eth-mainnet": "npx hardhat migrate --confirmations 6 --verify --network eth_mainnet",
     "deploy-bsc-mainnet": "npx hardhat migrate --confirmations 2 --verify --network bsc_mainnet",
     "generate-types": "TYPECHAIN_FORCE=true npx hardhat typechain",

@@ -4,7 +4,7 @@
 import { Deployer, Logger } from "@dlsl/hardhat-migrate";
 import { artifacts } from "hardhat";
 
-const signers = ["0xA2159b461D35E2c2faA5A561dE051ba8CCC1B9e7"];
+const signers = ["0xA8e57e5f3437B005463c6D9Ef1C6E895eE499d09"];
 const newOwner = "0xEd498E75d471C3b874461a87Bb7146453CC8175A";
 
 const ERC1967Proxy = artifacts.require("ERC1967Proxy");

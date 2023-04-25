@@ -73,6 +73,12 @@ const config: HardhatUserConfig = {
       accounts: privateKey(),
       gasMultiplier: 1.2,
     },
+    avalanche: {
+      url: `https://api.avax.network/ext/bc/C/rpc`,
+      accounts: privateKey(),
+      gasMultiplier: 1.2,
+      timeout: 60000,
+    },
   },
   solidity: {
     version: "0.8.17",
@@ -91,6 +97,7 @@ const config: HardhatUserConfig = {
       bsc: `${process.env.BSCSCAN_KEY}`,
       bscTestnet: `${process.env.BSCSCAN_KEY}`,
       avalancheFujiTestnet: `${process.env.AVALANCHE_KEY}`,
+      avalanche: `${process.env.AVALANCHE_KEY}`,
       q_testnet: "abc",
     },
     customChains: [
