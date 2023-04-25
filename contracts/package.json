@@ -1,0 +1,20 @@
+{
+  "name": "@swapica/core-contracts",
+  "version": "1.0.0",
+  "license": "MIT",
+  "author": "Distributed Lab",
+  "readme": "README.md",
+  "description": "Cross-chain atomic swaps",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Swapica/core-contracts"
+  },
+  "files": [
+    "**/*.sol",
+    "!mock/**/*"
+  ],
+  "dependencies": {
+    "@openzeppelin/contracts": "4.6.0",
+    "@openzeppelin/contracts-upgradeable": "4.6.0"
+  }
+}

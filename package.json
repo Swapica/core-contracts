@@ -1,9 +1,13 @@
 {
   "name": "swapica-contracts",
-  "version": "1.1.0",
+  "version": "1.0.0",
   "license": "MIT",
   "author": "Distributed Lab",
-  "description": "",
+  "description": "Cross-chain atomic swaps",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Swapica/core-contracts"
+  },
   "scripts": {
     "install": "npx husky install",
     "compile": "npx hardhat compile --force",
@@ -24,7 +28,8 @@
     "lint-fix": "npm run lint-sol-fix && npm run lint-ts-fix && npm run lint-json-fix",
     "lint-json-fix": "prettier --write \"./[a-zA-Z0-9.]+(?!-lock).json\"",
     "lint-ts-fix": "prettier --write \"./**/*.ts\"",
-    "lint-sol-fix": "prettier --write \"contracts/**/*.sol\""
+    "lint-sol-fix": "prettier --write \"contracts/**/*.sol\"",
+    "publish-to-npm": "npm run lint-fix && bash ./scripts/publish.sh"
   },
   "dependencies": {
     "@dlsl/dev-modules": "^2.0.2",
