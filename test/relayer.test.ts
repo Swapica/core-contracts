@@ -1,13 +1,13 @@
 import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
-import { ERC20Mock, Relayer, RelayerV2, Swapica } from "../generated-types/ethers";
+import { ERC20Mock, Relayer, RelayerV2, ISwapica, Swapica } from "@ethers-v5";
 
-import { createMatchBytes, executeBytes, executeMatchBytes, executeOrderBytes, signEach } from "./utils/signature";
+import { createMatchBytes, executeBytes, executeMatchBytes, executeOrderBytes, signEach } from "@/test/utils/signature";
 
 import { BigNumber } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { wei } from "../scripts/utils/utils";
-import { Reverter } from "./helpers/reverter";
+import { wei } from "@/scripts/utils/utils";
+import { Reverter } from "@/test/helpers/reverter";
 
 import {
   CreateMatchRequest,
@@ -15,13 +15,11 @@ import {
   ExecuteOrderRequest,
   ExecuteParameters,
   Selector,
-} from "./utils/types";
+} from "@/test/utils/types";
 
-import { ETHER_ADDR, PERCENTAGE_100 } from "../scripts/utils/constants";
+import { ETHER_ADDR, PERCENTAGE_100 } from "@/scripts/utils/constants";
 
-import { ISwapica } from "../generated-types/ethers/contracts/core/Swapica";
-
-import CreateOrderRequestStruct = ISwapica.CreateOrderRequestStruct;
+type CreateOrderRequestStruct = ISwapica.CreateOrderRequestStruct;
 
 describe("Relayer", function () {
   const defaultChainId = BigNumber.from(31337);

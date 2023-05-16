@@ -1,13 +1,16 @@
 import "@nomiclabs/hardhat-web3";
 import "@nomiclabs/hardhat-truffle5";
 import "@nomiclabs/hardhat-ethers";
-import "@nomicfoundation/hardhat-chai-matchers";
 import "@typechain/hardhat";
+import "@nomicfoundation/hardhat-chai-matchers";
 import "@dlsl/hardhat-migrate";
+import "@dlsl/hardhat-gobind";
+import "@dlsl/hardhat-markup";
 import "hardhat-contract-sizer";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "@openzeppelin/hardhat-upgrades";
+import "tsconfig-paths/register";
 
 import { HardhatUserConfig } from "hardhat/config";
 
@@ -21,11 +24,11 @@ function privateKey() {
 function typechainTarget() {
   const target = process.env.TYPECHAIN_TARGET;
 
-  return target == "" || target == undefined ? "ethers-v5" : target;
+  return target === "" || target === undefined ? "ethers-v5" : target;
 }
 
 function forceTypechain() {
-  return process.env.TYPECHAIN_FORCE == "true";
+  return process.env.TYPECHAIN_FORCE !== "false";
 }
 
 const config: HardhatUserConfig = {
@@ -48,28 +51,34 @@ const config: HardhatUserConfig = {
       accounts: privateKey(),
       gasMultiplier: 1.2,
     },
-    q_testnet: {
-      url: `https://rpc.qtestnet.org`,
-      accounts: privateKey(),
-      gasMultiplier: 1.2,
-    },
     chapel: {
       url: "https://data-seed-prebsc-1-s1.binance.org:8545",
       accounts: privateKey(),
       gasMultiplier: 1.2,
       timeout: 60000,
     },
-    bsc_mainnet: {
+    mumbai: {
+      url: `https://rpc-mumbai.maticvigil.com/`,
+      accounts: privateKey(),
+      gasMultiplier: 1.2,
+    },
+    fuji: {
+      url: `https://avalanche-fuji.infura.io/v3/${process.env.INFURA_KEY}`,
+      accounts: privateKey(),
+      gasMultiplier: 1.2,
+    },
+    bsc: {
       url: "https://bsc-dataseed.binance.org/",
       accounts: privateKey(),
       gasMultiplier: 1.2,
     },
-    eth_mainnet: {
+    ethereum: {
       url: `https://mainnet.infura.io/v3/${process.env.INFURA_KEY}`,
       accounts: privateKey(),
+      gasMultiplier: 1.2,
     },
-    avalanche_fuji_testnet: {
-      url: `https://avalanche-fuji.infura.io/v3/${process.env.INFURA_KEY}`,
+    polygon: {
+      url: `https://matic-mainnet.chainstacklabs.com`,
       accounts: privateKey(),
       gasMultiplier: 1.2,
     },
@@ -91,25 +100,16 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: {
-      mainnet: `${process.env.ETHERSCAN_KEY}`,
       goerli: `${process.env.ETHERSCAN_KEY}`,
       sepolia: `${process.env.ETHERSCAN_KEY}`,
-      bsc: `${process.env.BSCSCAN_KEY}`,
+      mainnet: `${process.env.ETHERSCAN_KEY}`,
       bscTestnet: `${process.env.BSCSCAN_KEY}`,
+      bsc: `${process.env.BSCSCAN_KEY}`,
+      polygonMumbai: `${process.env.POLYGONSCAN_KEY}`,
+      polygon: `${process.env.POLYGONSCAN_KEY}`,
       avalancheFujiTestnet: `${process.env.AVALANCHE_KEY}`,
       avalanche: `${process.env.AVALANCHE_KEY}`,
-      q_testnet: "abc",
     },
-    customChains: [
-      {
-        network: "q_testnet",
-        chainId: 35443,
-        urls: {
-          apiURL: "https://explorer.qtestnet.org/api",
-          browserURL: "https://explorer.qtestnet.org",
-        },
-      },
-    ],
   },
   migrate: {
     pathToMigrations: "./deploy/",
@@ -126,7 +126,7 @@ const config: HardhatUserConfig = {
   gasReporter: {
     currency: "USD",
     gasPrice: 50,
-    enabled: true,
+    enabled: false,
     coinmarketcap: `${process.env.COINMARKETCAP_KEY}`,
   },
   typechain: {
