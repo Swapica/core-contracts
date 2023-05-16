@@ -20,6 +20,7 @@
     "deploy-localhost": "npx hardhat migrate --network localhost",
     "deploy-goerli": "npx hardhat migrate --network goerli --verify --confirmations 4",
     "deploy-sepolia": "npx hardhat migrate --network sepolia --verify --confirmations 5",
+    "deploy-q-testnet": "npx hardhat migrate --confirmations 1 --verify --attempts 3 --network q_testnet",
     "deploy-chapel": "npx hardhat migrate --network chapel --verify --confirmations 1",
     "deploy-mumbai": "npx hardhat migrate --network mumbai --verify --confirmations 10",
     "deploy-fuji": "npx hardhat migrate --network fuji --verify --confirmations 5",
