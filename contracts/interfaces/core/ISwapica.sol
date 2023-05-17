@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+/**
+ * @notice The Swapica contract.
+ *
+ * This contract enables users to perform token swaps between different EVM-like chains.
+ * It provides functionalities for creating, executing and canceling orders and matches.
+ */
 interface ISwapica {
     /**
      * @notice The enum that represents the operation selectors

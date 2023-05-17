@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
+/**
+ * @notice The Relayer contract.
+ *
+ * This contract delegates the execution of matches and orders to the Swapica contract and collects commissions
+ */
 interface IRelayer {
     /**
      * @notice The struct that represents parameters for the orders and matches execution
