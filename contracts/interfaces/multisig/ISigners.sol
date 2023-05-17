@@ -4,7 +4,7 @@ pragma solidity ^0.8.17;
 /**
  * @notice The Signers contract.
  *
- * This contract manages the list of signers and provides functionalities for validating signatures
+ * This contract manages the list of signers and provides functionalities for validating signatures.
  */
 interface ISigners {
     /**
