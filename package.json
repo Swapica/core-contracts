@@ -33,7 +33,8 @@
     "lint-fix": "npm run lint-sol-fix && npm run lint-ts-fix && npm run lint-json-fix",
     "lint-json-fix": "prettier --write \"./**/*.json\"",
     "lint-ts-fix": "prettier --write \"./**/*.ts\"",
-    "lint-sol-fix": "prettier --write \"contracts/**/*.sol\""
+    "lint-sol-fix": "prettier --write \"contracts/**/*.sol\"",
+    "publish-to-npm": "npm run lint-fix && bash ./scripts/publish.sh"
   },
   "dependencies": {
     "@dlsl/dev-modules": "^2.0.2",
