@@ -1,14 +1,20 @@
 import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
-import { ERC20Mock, Swapica, SwapicaV2 } from "../generated-types/ethers";
+import { ERC20Mock, ISwapica, Swapica, SwapicaV2 } from "@ethers-v5";
 
-import { cancelMatchBytes, createMatchBytes, executeMatchBytes, executeOrderBytes, signEach } from "./utils/signature";
+import {
+  cancelMatchBytes,
+  createMatchBytes,
+  executeMatchBytes,
+  executeOrderBytes,
+  signEach,
+} from "@/test/utils/signature";
 
 import { BigNumber } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { wei } from "../scripts/utils/utils";
-import { cast } from "./utils/caster";
-import { Reverter } from "./helpers/reverter";
+import { wei } from "@/scripts/utils/utils";
+import { cast } from "@/test/utils/caster";
+import { Reverter } from "@/test/helpers/reverter";
 
 import {
   CancelMatchRequest,
@@ -19,13 +25,11 @@ import {
   State,
 } from "./utils/types";
 
-import { ETHER_ADDR, ZERO_ADDR } from "../scripts/utils/constants";
+import { ETHER_ADDR, ZERO_ADDR } from "@/scripts/utils/constants";
 
-import { ISwapica } from "../generated-types/ethers/contracts/core/Swapica";
-
-import CreateOrderRequestStruct = ISwapica.CreateOrderRequestStruct;
-import OrderStruct = ISwapica.OrderStruct;
-import MatchStruct = ISwapica.MatchStruct;
+type OrderStruct = ISwapica.OrderStruct;
+type MatchStruct = ISwapica.MatchStruct;
+type CreateOrderRequestStruct = ISwapica.CreateOrderRequestStruct;
 
 describe("Swapica", function () {
   const defaultChainId = BigNumber.from(31337);
